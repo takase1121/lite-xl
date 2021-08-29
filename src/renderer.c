@@ -116,10 +116,17 @@ int ren_get_font_height(int font) {
   return lh;
 }
 
+static void scale_rect(RenRect *rect) {
+  rect->x *= ren.scale;
+  rect->y *= ren.scale;
+  rect->width *= ren.scale;
+  rect->height  *= ren.scale;
+}
 
 void ren_draw_rect(RenRect rect, NVGcolor color) {
   if (color.a == 0) { return; }
 
+  scale_rect(&rect);
   nvgBeginPath(ren.vg);
   nvgRect(ren.vg, rect.x, rect.y, rect.width, rect.height);
   nvgFillColor(ren.vg, color);
