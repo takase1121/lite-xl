@@ -1,29 +1,26 @@
 #include "api.h"
 #include "renderer.h"
-#include "rencache.h"
 
 
-static RenColor checkcolor(lua_State *L, int idx, int def) {
-  RenColor color;
+static NVGcolor checkcolor(lua_State *L, int idx, int def) {
   if (lua_isnoneornil(L, idx)) {
-    return (RenColor) { def, def, def, 255 };
+    return nvgRGBA(def, def, def, 255);
   }
   lua_rawgeti(L, idx, 1);
   lua_rawgeti(L, idx, 2);
   lua_rawgeti(L, idx, 3);
   lua_rawgeti(L, idx, 4);
-  color.r = luaL_checknumber(L, -4);
-  color.g = luaL_checknumber(L, -3);
-  color.b = luaL_checknumber(L, -2);
-  color.a = luaL_optnumber(L, -1, 255);
+  int r = luaL_checknumber(L, -4);
+  int g = luaL_checknumber(L, -3);
+  int b = luaL_checknumber(L, -2);
+  int a = luaL_optnumber(L, -1, 255);
   lua_pop(L, 4);
-  return color;
+  return nvgRGBA(r, g, b, a);
 }
 
 
 static int f_show_debug(lua_State *L) {
-  luaL_checkany(L, 1);
-  rencache_show_debug(lua_toboolean(L, 1));
+  fprintf(stderr, "rip debug\n");
   return 0;
 }
 
@@ -38,13 +35,13 @@ static int f_get_size(lua_State *L) {
 
 
 static int f_begin_frame(lua_State *L) {
-  rencache_begin_frame(L);
+  ren_start_frame();
   return 0;
 }
 
 
 static int f_end_frame(lua_State *L) {
-  rencache_end_frame(L);
+  ren_end_frame();
   return 0;
 }
 
@@ -55,7 +52,7 @@ static int f_set_clip_rect(lua_State *L) {
   rect.y = luaL_checknumber(L, 2);
   rect.width = luaL_checknumber(L, 3);
   rect.height = luaL_checknumber(L, 4);
-  rencache_set_clip_rect(rect);
+  ren_set_clip_rect(rect);
   return 0;
 }
 
@@ -66,42 +63,35 @@ static int f_draw_rect(lua_State *L) {
   rect.y = luaL_checknumber(L, 2);
   rect.width = luaL_checknumber(L, 3);
   rect.height = luaL_checknumber(L, 4);
-  RenColor color = checkcolor(L, 5, 255);
-  rencache_draw_rect(rect, color);
+  NVGcolor color = checkcolor(L, 5, 255);
+  ren_draw_rect(rect, color);
   return 0;
 }
 
-static int draw_text_subpixel_impl(lua_State *L, bool draw_subpixel) {
-  FontDesc *font_desc = luaL_checkudata(L, 1, API_TYPE_FONT);
+static int draw_text_subpixel_impl(lua_State *L) {
+  check_metatype(L, 1, API_TYPE_FONT);
   const char *text = luaL_checkstring(L, 2);
-  /* The coordinate below will be in subpixel iff draw_subpixel is true.
-     Otherwise it will be in pixels. */
-  int x_subpixel = luaL_checknumber(L, 3);
+  int x = luaL_checknumber(L, 3);
   int y = luaL_checknumber(L, 4);
-  RenColor color = checkcolor(L, 5, 255);
+  NVGcolor color = checkcolor(L, 5, 255);
 
-  CPReplaceTable *rep_table;
-  RenColor replace_color;
-  if (lua_gettop(L) >= 7) {
-    rep_table = luaL_checkudata(L, 6, API_TYPE_REPLACE);
-    replace_color = checkcolor(L, 7, 255);
-  } else {
-    rep_table = NULL;
-    replace_color = (RenColor) {0};
-  }
+  lua_rawgeti(L, 1, 1);
+  int font = luaL_checknumber(L, -1);
 
-  x_subpixel = rencache_draw_text(L, font_desc, 1, text, x_subpixel, y, color, draw_subpixel, rep_table, replace_color);
-  lua_pushnumber(L, x_subpixel);
+  x = ren_draw_text(font, text, x, y, color);
+  lua_pushnumber(L, x);
   return 1;
 }
 
+
 static int f_draw_text(lua_State *L) {
-  return draw_text_subpixel_impl(L, false);
+  return draw_text_subpixel_impl(L);
 }
 
 
 static int f_draw_text_subpixel(lua_State *L) {
-  return draw_text_subpixel_impl(L, true);
+  // fprintf(stderr, "subpixel rendering isn't available\n");
+  return draw_text_subpixel_impl(L);
 }
 
 
@@ -119,13 +109,13 @@ static const luaL_Reg lib[] = {
 
 
 int luaopen_renderer_font(lua_State *L);
-int luaopen_renderer_replacements(lua_State *L);
+int luaopen_renderer_font_group(lua_State *L);
 
 int luaopen_renderer(lua_State *L) {
   luaL_newlib(L, lib);
   luaopen_renderer_font(L);
   lua_setfield(L, -2, "font");
-  luaopen_renderer_replacements(L);
-  lua_setfield(L, -2, "replacements");
+  luaopen_renderer_font_group(L);
+  lua_setfield(L, -2, "FontGroup");
   return 1;
 }

@@ -6,7 +6,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include "api.h"
-#include "rencache.h"
+#include "renderer.h"
 #ifdef _WIN32
   #include <direct.h>
   #include <windows.h>
@@ -117,7 +117,6 @@ top:
         lua_pushnumber(L, e.window.data2);
         return 3;
       } else if (e.window.event == SDL_WINDOWEVENT_EXPOSED) {
-        rencache_invalidate();
         lua_pushstring(L, "exposed");
         return 1;
       } else if (e.window.event == SDL_WINDOWEVENT_MINIMIZED) {

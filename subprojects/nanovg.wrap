@@ -1,0 +1,4 @@
+[wrap-git]
+directory = nanovg
+url = https://github.com/takase1121/nanovg.git
+revision = head
