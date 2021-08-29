@@ -75,7 +75,7 @@ void ren_get_size(int *x, int *y) {
 }
 
 
-int ren_load_font(const char *filename, float size) {
+int ren_load_font(const char *filename) {
   return nvgCreateFont(ren.vg, filename, filename);
 }
 
@@ -134,8 +134,9 @@ void ren_draw_rect(RenRect rect, NVGcolor color) {
 }
 
 
-int ren_draw_text(int font, const char *text, int x, int y, NVGcolor color) {
+int ren_draw_text(int font, float font_size, const char *text, int x, int y, NVGcolor color) {
   nvgFontFaceId(ren.vg, font);
+  nvgFontSize(ren.vg, font_size);
   nvgFillColor(ren.vg, color);
   nvgTextAlign(ren.vg, NVG_ALIGN_LEFT | NVG_ALIGN_TOP);
   return nvgText(ren.vg, x, y, text, strstr(text, "\n"));

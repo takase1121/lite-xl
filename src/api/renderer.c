@@ -77,8 +77,12 @@ static int draw_text_subpixel_impl(lua_State *L) {
 
   lua_rawgeti(L, 1, 1);
   int font = luaL_checknumber(L, -1);
+  lua_pop(L, 1);
 
-  x = ren_draw_text(font, text, x, y, color);
+  lua_getfield(L, 1, "size");
+  float font_size = luaL_checknumber(L, -1);
+
+  x = ren_draw_text(font, font_size, text, x, y, color);
   lua_pushnumber(L, x);
   return 1;
 }

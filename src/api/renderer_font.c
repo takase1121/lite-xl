@@ -9,7 +9,7 @@
 static int f_load(lua_State *L) {
   const char *filename = luaL_checkstring(L, 1);
   int size = luaL_checknumber(L, 2);
-  int font = ren_load_font(filename, size);
+  int font = ren_load_font(filename);
   int line_height = ren_get_font_height(font);
   
   lua_newtable(L);
