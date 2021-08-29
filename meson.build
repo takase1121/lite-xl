@@ -62,8 +62,25 @@ reproc_dep = dependency('reproc', fallback: ['reproc', 'reproc_dep'],
         'reproc-cpp=false', 'examples=false'
     ]
 )
+freetype_dep = dependency('freetype2')
 
-lite_deps = [lua_dep, sdl_dep, reproc_dep, pcre2_dep, libm, libdl]
+cmake = import('cmake')
+nanovg_opt = cmake.subproject_options()
+nanovg_opt.add_cmake_defines({
+  'NANOVG_SHARED_LIBS': false,
+  'NANOVG_BUILD_EXAMPLES': false,
+  'NANOVG_BUILD_SVG': false,
+  'NANOVG_BUILD_GUI': false,
+  'NANOVG_USE_FREETYPE': true,
+  'NANOVG_USE_STB': false,
+})
+nanovg = cmake.subproject('nanovg', options: nanovg_opt)
+nanovg_dep = [nanovg.dependency('nanovg'), nanovg.dependency('nanovg_gl2')]
+nanovg_gl2_dep = nanovg.dependency('nanovg_gl2')
+libgl = cc.find_library('GL', required: true)
+libglew = cc.find_library('GLEW', required: true)
+
+lite_deps = [lua_dep, sdl_dep, reproc_dep, pcre2_dep, freetype_dep, libm, libdl, libgl, libglew, nanovg_dep, nanovg_gl2_dep]
 
 if host_machine.system() == 'windows'
     # Note that we need to explicitly add the windows socket DLL because
@@ -119,5 +136,4 @@ configure_file(
 #===============================================================================
 # Targets
 #===============================================================================
-subdir('lib/font_renderer')
 subdir('src')
