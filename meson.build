@@ -1,9 +1,9 @@
 project('lite-xl',
-    ['c', 'cpp'],
+    'c',
     version : '2.0.1',
     license : 'MIT',
-    meson_version : '>= 0.54',
-    default_options : ['c_std=gnu11', 'cpp_std=c++03']
+    meson_version : '>= 0.55',
+    default_options : ['c_std=gnu11']
 )
 
 #===============================================================================
@@ -31,16 +31,12 @@ endif
 cc = meson.get_compiler('c')
 
 lite_cargs = []
-# On macos we need to use the SDL renderer to support retina displays
-if get_option('renderer') or host_machine.system() == 'darwin'
-    lite_cargs += '-DLITE_USE_SDL_RENDERER'
-endif
 #===============================================================================
 # Linker Settings
 #===============================================================================
 lite_link_args = []
 if cc.get_id() == 'gcc' and get_option('buildtype') == 'release'
-    lite_link_args += ['-static-libgcc', '-static-libstdc++']
+    lite_link_args += ['-static-libgcc']
 endif
 
 if host_machine.system() == 'darwin'
@@ -51,6 +47,8 @@ endif
 #===============================================================================
 libm = cc.find_library('m', required : false)
 libdl = cc.find_library('dl', required : false)
+libgl = cc.find_library('GL', required: true)
+glew_dep = dependency('GLEW')
 lua_dep = dependency('lua5.2', fallback: ['lua', 'lua_dep'],
     default_options: ['shared=false', 'use_readline=false', 'app=false']
 )
@@ -76,16 +74,13 @@ nanovg_opt.add_cmake_defines({
 })
 nanovg = cmake.subproject('nanovg', options: nanovg_opt)
 nanovg_dep = [nanovg.dependency('nanovg'), nanovg.dependency('nanovg_gl2')]
-nanovg_gl2_dep = nanovg.dependency('nanovg_gl2')
-libgl = cc.find_library('GL', required: true)
-libglew = cc.find_library('GLEW', required: true)
-
-lite_deps = [lua_dep, sdl_dep, reproc_dep, pcre2_dep, freetype_dep, libm, libdl, libgl, libglew, nanovg_dep, nanovg_gl2_dep]
+nanovg_dep += [libgl, glew_dep]
+lite_deps = [lua_dep, sdl_dep, reproc_dep, pcre2_dep, freetype_dep, libm, libdl, nanovg_dep] 
 
 if host_machine.system() == 'windows'
     # Note that we need to explicitly add the windows socket DLL because
     # the pkg-config file from reproc does not include it.
-    lite_deps += meson.get_compiler('cpp').find_library('ws2_32', required: true)
+    lite_deps += cc.find_library('ws2_32', required: true)
 endif
 #===============================================================================
 # Install Configuration
