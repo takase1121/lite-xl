@@ -93,17 +93,35 @@ static int f_set_size(lua_State *L) {
 }
 
 
+static int f_add_fallback(lua_State *L) {
+  RenFont *basefont = luaL_checkudata(L, 1, API_TYPE_FONT);
+  RenFont *font = luaL_checkudata(L, 2, API_TYPE_FONT);
+  ren_add_fallback_font(basefont, font);
+  lua_pushvalue(L, 1);
+  return 1;
+}
+
+
+static int f_reset_fallbacks(lua_State *L) {
+  RenFont *font = luaL_checkudata(L, 1, API_TYPE_FONT);
+  ren_reset_fallback_fonts(font);
+  return 0;
+}
+
+
 static const luaL_Reg lib[] = {
   { "__gc",               f_gc                 },
   { "load",               f_load               },
   { "copy",               f_copy               },
-  { "set_tab_size",       f_set_tab_size      },
+  { "set_tab_size",        f_set_tab_size      },
   { "get_width",          f_get_width          },
   { "get_width_subpixel", f_get_width_subpixel },
   { "get_height",         f_get_height         },
   { "subpixel_scale",     f_subpixel_scale     },
   { "get_size",           f_get_size           },
   { "set_size",           f_set_size           },
+  { "add_fallback",       f_add_fallback       },
+  { "reset_fallbacks",    f_reset_fallbacks    },
   { NULL, NULL }
 };
 

@@ -106,13 +106,10 @@ static const luaL_Reg lib[] = {
 
 
 int luaopen_renderer_font(lua_State *L);
-int luaopen_renderer_font_group(lua_State *L);
 
 int luaopen_renderer(lua_State *L) {
   luaL_newlib(L, lib);
   luaopen_renderer_font(L);
   lua_setfield(L, -2, "font");
-  luaopen_renderer_font_group(L);
-  lua_setfield(L, -2, "FontGroup");
   return 1;
 }

@@ -80,6 +80,13 @@ int ren_load_font(const char *filename) {
 void ren_free_font(RenFont *font) {
 }
 
+void ren_add_fallback_font(RenFont *basefont, RenFont *font) {
+  nvgAddFallbackFontId(ren.vg, basefont->handle, font->handle);
+}
+
+void ren_reset_fallback_fonts(RenFont *font) {
+  nvgResetFallbackFontsId(ren.vg, font->handle);
+}
 
 void ren_set_font_size(RenFont *font, float size) {
   nvgFontFaceId(ren.vg, font->handle);

@@ -31,6 +31,8 @@ void ren_free_window_resources();
 
 int ren_load_font(const char *filename);
 void ren_free_font(RenFont *font);
+void ren_add_fallback_font(RenFont *basefont, RenFont *font);
+void ren_reset_fallback_fonts(RenFont *font);
 void ren_set_font_size(RenFont *font, float size);
 void ren_set_font_tab_size(RenFont *font, int n);
 int ren_get_font_tab_size(RenFont *font);

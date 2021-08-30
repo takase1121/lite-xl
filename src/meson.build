@@ -2,7 +2,6 @@ lite_sources = [
     'api/api.c',
     'api/renderer.c',
     'api/renderer_font.c',
-    'api/renderer_font_group.c',
     'api/regex.c',
     'api/system.c',
     'api/process.c',
