@@ -274,4 +274,4 @@ jobs:
         files: |
           lite-xl-${{ env.INSTALL_REF }}-*
           LiteXL*.AppImage
-          LiteXL*.exe
+          LiteXL*.exe 
