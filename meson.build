@@ -66,7 +66,7 @@ nanovg_opt.add_cmake_defines({
   'NANOVG_SHARED_LIBS': false,
   'NANOVG_BUILD_EXAMPLES': false,
   'NANOVG_BUILD_SVG': false,
-  'NANOVG_BUILD_GUI': false,
+  'NANOVG_BUILD_OUI': false,
   'NANOVG_USE_FREETYPE': true,
   'NANOVG_USE_STB': false,
 })
