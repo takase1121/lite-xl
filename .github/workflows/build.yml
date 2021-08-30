@@ -64,6 +64,8 @@ jobs:
         python-version: 3.6
     - name: Update Packages
       run: sudo apt-get update
+    - name: Install cmake
+      run: sudo apt-get install -qq cmake
     - name: Install Meson
       run: |
         sudo apt-get install -qq ninja-build
@@ -118,6 +120,7 @@ jobs:
     - name: Install Build Tools
       run: |
         brew install ninja
+        brew install cmake
         pip3 install meson
         cd ~; npm install appdmg; cd -
         ~/node_modules/appdmg/bin/appdmg.js --version
@@ -185,6 +188,7 @@ jobs:
         pacman --noconfirm -S \
           ${MINGW_PACKAGE_PREFIX}-gcc \
           ${MINGW_PACKAGE_PREFIX}-meson \
+          ${MINGW_PACKAGE_PREFIX}-cmake \
           ${MINGW_PACKAGE_PREFIX}-ninja \
           ${MINGW_PACKAGE_PREFIX}-pkg-config \
           ${MINGW_PACKAGE_PREFIX}-freetype \
@@ -197,6 +201,7 @@ jobs:
         pacman --noconfirm -S \
           ${MINGW_PACKAGE_PREFIX}-gcc \
           ${MINGW_PACKAGE_PREFIX}-meson \
+          ${MINGW_PACKAGE_PREFIX}-cmake \
           ${MINGW_PACKAGE_PREFIX}-ninja \
           ${MINGW_PACKAGE_PREFIX}-pkg-config \
           ${MINGW_PACKAGE_PREFIX}-glew 
