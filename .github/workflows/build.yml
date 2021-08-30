@@ -189,7 +189,8 @@ jobs:
           ${MINGW_PACKAGE_PREFIX}-pkg-config \
           ${MINGW_PACKAGE_PREFIX}-freetype \
           ${MINGW_PACKAGE_PREFIX}-pcre2 \
-          ${MINGW_PACKAGE_PREFIX}-SDL2
+          ${MINGW_PACKAGE_PREFIX}-SDL2 \
+          ${MINGW_PACKAGE_PREFIX}-glew
     - name: Install Release Dependencies
       if: ${{ startsWith(github.ref, 'refs/tags/') }}
       run: |
@@ -197,7 +198,8 @@ jobs:
           ${MINGW_PACKAGE_PREFIX}-gcc \
           ${MINGW_PACKAGE_PREFIX}-meson \
           ${MINGW_PACKAGE_PREFIX}-ninja \
-          ${MINGW_PACKAGE_PREFIX}-pkg-config
+          ${MINGW_PACKAGE_PREFIX}-pkg-config \
+          ${MINGW_PACKAGE_PREFIX}-glew 
     - name: Build
       if: ${{ !startsWith(github.ref, 'refs/tags/') }}
       run: bash scripts/build.sh --prefix /
@@ -274,4 +276,4 @@ jobs:
         files: |
           lite-xl-${{ env.INSTALL_REF }}-*
           LiteXL*.AppImage
-          LiteXL*.exe
+          LiteXL*.exe 
