@@ -80,6 +80,8 @@ if host_machine.system() == 'windows'
     lite_deps += cc.find_library('ws2_32', required: true)
     lite_deps += cc.find_library('opengl32', required: true)
     lite_deps += cc.find_library('glew32', required: true)
+else if host_machine.system() == 'darwin'
+    lite_link_args += ['-framework', 'OpenGL']
 else
     lite_deps += cc.find_library('GL', required: true)
     lite_deps += cc.find_library('GLEW', required: true)
