@@ -65,6 +65,9 @@ nanovg_opt = cmake.subproject_options()
 nanovg_opt.add_cmake_defines({
   'NANOVG_SHARED_LIBS': false,
   'NANOVG_BUILD_EXAMPLES': false,
+  'NANOVG_BUILD_GL3': false,
+  'NANOVG_BUILD_GLES2': false,
+  'NANOVG_BUILD_GLES3': false,
   'NANOVG_BUILD_SVG': false,
   'NANOVG_BUILD_OUI': false,
   'NANOVG_USE_FREETYPE': true,
