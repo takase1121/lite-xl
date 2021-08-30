@@ -33,22 +33,19 @@ void ren_init(SDL_Window *win) {
   SDL_GLContext ctx = SDL_GL_CreateContext(win);
   SDL_GL_MakeCurrent(win, ctx);
   ren.vg = nvgCreateGL2(NVG_ANTIALIAS | NVG_STENCIL_STROKES);
-  SDL_GetWindowSize(win, &ren.w, &ren.h);
-  ren.scale = get_surface_scale();
+  ren_resize_window();
 }
 
 
 void ren_resize_window() {
   nvgCancelFrame(ren.vg);
-  SDL_GetWindowSize(ren.window, &ren.w, &ren.h);
+  SDL_GL_GetDrawableSize(ren.window, &ren.w, &ren.h);
   ren.scale = get_surface_scale();
 }
 
 
 void ren_start_frame() {
-  int w, h;
-  SDL_GL_GetDrawableSize(ren.window, &w, &h);
-  glViewport(0, 0, w, h);
+  glViewport(0, 0, ren.w, ren.h);
   glClearColor(0, 0, 0, 0);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
   nvgBeginFrame(ren.vg, ren.w, ren.h, ren.scale);
@@ -80,38 +77,36 @@ int ren_load_font(const char *filename) {
 }
 
 
-void ren_free_font(int font) {
+void ren_free_font(RenFont *font) {
 }
 
 
-void ren_set_font_size(int font, float size) {
-  nvgFontFaceId(ren.vg, font);
+void ren_set_font_size(RenFont *font, float size) {
+  nvgFontFaceId(ren.vg, font->handle);
   nvgFontSize(ren.vg, size);
 }
 
 
-void ren_set_font_tab_size(int font, int n) {
+void ren_set_font_tab_size(RenFont *font, int n) {
   // fprintf(stderr, "warning: tab size still don't work\n");
 }
 
 
-int ren_get_font_tab_size(int font) {
-  nvgFontFaceId(ren.vg, font);
-  float bounds[4] = { 0 };
-  return nvgTextBounds(ren.vg, 0, 0, "\t", NULL, bounds);
+int ren_get_font_tab_size(RenFont *font) {
+  nvgFontFaceId(ren.vg, font->handle);
+  return nvgTextBounds(ren.vg, 0, 0, "\t", NULL, NULL);
 }
 
 
-int ren_get_font_width(int font, const char *text) {
-  nvgFontFaceId(ren.vg, font);
-  float bounds[4];
-  return nvgTextBounds(ren.vg, 0, 0, text, NULL, bounds);
+int ren_get_font_width(RenFont *font, const char *text) {
+  nvgFontFaceId(ren.vg, font->handle);
+  return nvgTextBounds(ren.vg, 0, 0, text, NULL, NULL);
 }
 
 
-int ren_get_font_height(int font) {
-  nvgFontFaceId(ren.vg, font);
+int ren_get_font_height(RenFont *font) {
   float lh;
+  nvgFontFaceId(ren.vg, font->handle);
   nvgTextMetrics(ren.vg, NULL, NULL, &lh);
   return lh;
 }
@@ -134,9 +129,9 @@ void ren_draw_rect(RenRect rect, NVGcolor color) {
 }
 
 
-int ren_draw_text(int font, float font_size, const char *text, int x, int y, NVGcolor color) {
-  nvgFontFaceId(ren.vg, font);
-  nvgFontSize(ren.vg, font_size);
+int ren_draw_text(RenFont *font, const char *text, int x, int y, NVGcolor color) {
+  nvgFontFaceId(ren.vg, font->handle);
+  nvgFontSize(ren.vg, font->size);
   nvgFillColor(ren.vg, color);
   nvgTextAlign(ren.vg, NVG_ALIGN_LEFT | NVG_ALIGN_TOP);
   return nvgText(ren.vg, x, y, text, strstr(text, "\n"));

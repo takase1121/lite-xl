@@ -69,20 +69,13 @@ static int f_draw_rect(lua_State *L) {
 }
 
 static int draw_text_subpixel_impl(lua_State *L) {
-  check_metatype(L, 1, API_TYPE_FONT);
+  RenFont *font = luaL_checkudata(L, 1, API_TYPE_FONT);
   const char *text = luaL_checkstring(L, 2);
   int x = luaL_checknumber(L, 3);
   int y = luaL_checknumber(L, 4);
   NVGcolor color = checkcolor(L, 5, 255);
 
-  lua_rawgeti(L, 1, 1);
-  int font = luaL_checknumber(L, -1);
-  lua_pop(L, 1);
-
-  lua_getfield(L, 1, "size");
-  float font_size = luaL_checknumber(L, -1);
-
-  x = ren_draw_text(font, font_size, text, x, y, color);
+  x = ren_draw_text(font, text, x, y, color);
   lua_pushnumber(L, x);
   return 1;
 }

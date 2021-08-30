@@ -11,7 +11,14 @@
 #include "nanovg_gl.h"
 #include "nanovg_gl_utils.h"
 
+typedef struct {
+  int handle;
+  float size;
+  float height;
+} RenFont;
+
 typedef struct { int x, y, width, height; } RenRect;
+typedef NVGcolor RenColor;
 
 void ren_init(SDL_Window *win);
 void ren_resize_window();
@@ -23,15 +30,15 @@ void ren_get_size(int *x, int *y);
 void ren_free_window_resources();
 
 int ren_load_font(const char *filename);
-void ren_free_font(int font);
-void ren_set_font_size(int font, float size);
-void ren_set_font_tab_size(int font, int n);
-int ren_get_font_tab_size(int font);
+void ren_free_font(RenFont *font);
+void ren_set_font_size(RenFont *font, float size);
+void ren_set_font_tab_size(RenFont *font, int n);
+int ren_get_font_tab_size(RenFont *font);
 
-int ren_get_font_width(int font, const char *text);
-int ren_get_font_height(int font);
+int ren_get_font_width(RenFont *font, const char *text);
+int ren_get_font_height(RenFont *font);
 
 void ren_draw_rect(RenRect rect, NVGcolor color);
-int ren_draw_text(int font, float font_size, const char *text, int x, int y, NVGcolor color);
+int ren_draw_text(RenFont *font, const char *text, int x, int y, NVGcolor color);
 
 #endif
