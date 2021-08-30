@@ -113,7 +113,7 @@ static const luaL_Reg lib[] = {
   { "__gc",               f_gc                 },
   { "load",               f_load               },
   { "copy",               f_copy               },
-  { "set_tab_size",        f_set_tab_size      },
+  { "set_tab_size",       f_set_tab_size       },
   { "get_width",          f_get_width          },
   { "get_width_subpixel", f_get_width_subpixel },
   { "get_height",         f_get_height         },
