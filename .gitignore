@@ -5,6 +5,7 @@ submodules/
 subprojects/lua/
 subprojects/libagg/
 subprojects/reproc/
+subprojects/nanovg/
 /appimage*
 .ccls-cache
 .lite-debug.log
