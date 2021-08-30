@@ -47,7 +47,6 @@ endif
 #===============================================================================
 libm = cc.find_library('m', required : false)
 libdl = cc.find_library('dl', required : false)
-libgl = cc.find_library('GL', required: true)
 glew_dep = dependency('GLEW')
 lua_dep = dependency('lua5.2', fallback: ['lua', 'lua_dep'],
     default_options: ['shared=false', 'use_readline=false', 'app=false']
@@ -74,13 +73,16 @@ nanovg_opt.add_cmake_defines({
 })
 nanovg = cmake.subproject('nanovg', options: nanovg_opt)
 nanovg_dep = [nanovg.dependency('nanovg'), nanovg.dependency('nanovg_gl2')]
-nanovg_dep += [libgl, glew_dep]
+nanovg_dep += glew_dep
 lite_deps = [lua_dep, sdl_dep, reproc_dep, pcre2_dep, freetype_dep, libm, libdl, nanovg_dep] 
 
 if host_machine.system() == 'windows'
     # Note that we need to explicitly add the windows socket DLL because
     # the pkg-config file from reproc does not include it.
     lite_deps += cc.find_library('ws2_32', required: true)
+    lite_deps += cc.find_library('opengl32', required: true)
+else
+    lite_deps += cc.find_library('GL', required: true)
 endif
 #===============================================================================
 # Install Configuration
