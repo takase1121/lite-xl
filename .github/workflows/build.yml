@@ -28,7 +28,7 @@ jobs:
         python-version: 3.6
     - name: Install Dependencies
       run: |
-        sudo apt-get install -qq ninja-build
+        sudo apt-get install -qq ninja-build cmake
         pip3 install meson
     - name: Archive source code
       shell: bash
@@ -194,7 +194,6 @@ jobs:
           ${MINGW_PACKAGE_PREFIX}-freetype \
           ${MINGW_PACKAGE_PREFIX}-pcre2 \
           ${MINGW_PACKAGE_PREFIX}-SDL2 \
-          ${MINGW_PACKAGE_PREFIX}-glew
     - name: Install Release Dependencies
       if: ${{ startsWith(github.ref, 'refs/tags/') }}
       run: |
@@ -204,7 +203,6 @@ jobs:
           ${MINGW_PACKAGE_PREFIX}-cmake \
           ${MINGW_PACKAGE_PREFIX}-ninja \
           ${MINGW_PACKAGE_PREFIX}-pkg-config \
-          ${MINGW_PACKAGE_PREFIX}-glew 
     - name: Build
       if: ${{ !startsWith(github.ref, 'refs/tags/') }}
       run: bash scripts/build.sh --prefix /

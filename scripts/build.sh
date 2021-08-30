@@ -36,6 +36,7 @@ install_lhelper() {
   source "$(lhelper env-source lite-xl)"
 
   lhelper install freetype2
+  lhelper install glew_2.1.0-lhelper4
   lhelper install sdl2 2.0.14-wait-event-timeout-1
   lhelper install pcre2
 
