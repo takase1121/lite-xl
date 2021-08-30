@@ -7,6 +7,19 @@
 #define FOREACH(L, n) \
   for (int i = 1, __len = lua_rawlen(L, n); i <= __len; i++) \
 
+
+void check_metatype(lua_State *L, int n, const char *type) {
+  if (lua_getmetatable(L, n)) {
+    luaL_getmetatable(L, type);
+    int eq = lua_rawequal(L, -1, -2);
+    lua_pop(L, 2);
+
+    if (!eq)
+      luaL_error(L, "Parameter specified is not a %s object.", type);
+  }
+}
+
+
 static int f_new(lua_State *L) {
   luaL_checktype(L, 1, LUA_TTABLE);
   lua_settop(L, 1);
