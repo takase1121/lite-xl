@@ -23,4 +23,4 @@ function strict.__index(t, k)
 end
 
 
-setmetatable(_G, strict)
+-- setmetatable(_G, strict)
