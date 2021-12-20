@@ -33,7 +33,7 @@ endif
 # Linker Settings
 #===============================================================================
 lite_link_args = []
-lite_link_args += ['-export-dynamic']
+lite_link_args += ['--export-dynamic']
 if cc.get_id() == 'gcc' and get_option('buildtype') == 'release'
     lite_link_args += ['-static-libgcc']
 endif
