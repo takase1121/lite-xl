@@ -34,7 +34,7 @@ endif
 #===============================================================================
 lite_link_args = []
 if host_machine.system() == 'windows'
-    lite_link_args += ['--export-all-symbols']
+    lite_link_args += ['-Wl,-export-all-symbols']
 else
     lite_link_args += ['-rdynamic']
 endif
