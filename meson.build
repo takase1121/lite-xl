@@ -36,7 +36,7 @@ lite_link_args = []
 if host_machine.system() == 'windows'
     lite_link_args += ['--export-all-symbols']
 else
-    lite_link_args += ['-Wl,-export-dynamic']
+    lite_link_args += ['-rdynamic']
 endif
 
 if cc.get_id() == 'gcc' and get_option('buildtype') == 'release'
