@@ -196,7 +196,7 @@ jobs:
     - name: Upload Artifacts
       uses: actions/upload-artifact@v2
       with:
-        name: Windows Artifacts
+        name: Windows Artifacts (${{ matrix.msystem }})
         path: |
           LiteXL*.exe
           ${{ env.INSTALL_NAME }}.zip
