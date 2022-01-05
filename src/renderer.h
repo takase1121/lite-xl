@@ -25,6 +25,8 @@ float ren_draw_text(RenFont **font, const char *text, float x, int y, RenColor c
 
 void ren_draw_rect(RenRect rect, RenColor color);
 
+void ren_screenshot(const char *filename);
+
 void ren_init(SDL_Window *win);
 void ren_resize_window();
 void ren_update_rects(RenRect *rects, int count);
