@@ -11,7 +11,7 @@ local output_dir = system.absolute_path "previews"
 -- quit after demo
 local quit_after_demo = true
 -- window size
-local window_w, window_h = 1024, 576
+local window_w, window_h = 1600, 900
 
 core.add_thread(function()
   local old_path = package.path
