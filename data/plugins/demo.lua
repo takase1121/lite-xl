@@ -11,6 +11,9 @@ local color_dir = system.absolute_path "colors"
 -- output dir
 local output_dir = system.absolute_path "previews"
 
+-- quit after demo
+local quit_after_demo = true
+
 core.add_thread(function()
   local old_path = package.path
   package.path = package.path .. ";" .. color_dir .. PATHSEP .. "?.lua"
@@ -31,4 +34,8 @@ core.add_thread(function()
   end
 
   package.path = old_path
+
+  if quit_after_demo then
+    core.quit(true)
+  end
 end)
