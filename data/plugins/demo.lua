@@ -5,9 +5,9 @@ local config = require "core.config"
 -- find this file
 local this_file = DATADIR .. "/plugins/demo.lua"
 -- color dir
-local color_dir = system.absolute_path "colors"
+local color_dir = system.absolute_path(os.getenv("LITE_XL_PREVIEW_COLORS") or "colors")
 -- output dir
-local output_dir = system.absolute_path "previews"
+local output_dir = system.absolute_path(os.getenv("LITE_XL_PREVIEW_OUTPUT") or "previews")
 -- quit after demo
 local quit_after_demo = true
 -- window size
