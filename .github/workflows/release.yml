@@ -21,14 +21,14 @@ jobs:
       version: ${{ steps.tag.outputs.version }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Fetch Version
         id: tag
         run: |
           if [[ "${{ github.event.inputs.version }}" != "" ]]; then
-            echo ::set-output name=version::${{ github.event.inputs.version }}
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
           else
-            echo ::set-output name=version::${GITHUB_REF/refs\/tags\//}
+            echo "version=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_OUTPUT
           fi
       - name: Update Tag
         uses: richardsimko/update-tag@v1
