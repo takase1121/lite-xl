@@ -38,13 +38,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Create Release
         id: create_release
-        uses: softprops/action-gh-release@v1
+        uses: ncipollo/release-action@v1
         with:
-          tag_name: ${{ steps.tag.outputs.version }}
+          tag: ${{ steps.tag.outputs.version }}
           name: Lite XL ${{ steps.tag.outputs.version }}
           draft: true
-          body_path: changelog.md
-          generate_release_notes: true
+          bodyFile: changelog.md
+          generateReleaseNotes: true
+          allowUpdates: true
 
   build_linux:
     name: Linux
@@ -82,9 +83,9 @@ jobs:
           bash scripts/appimage.sh --debug --static --version ${INSTALL_REF} --release
           bash scripts/appimage.sh --debug --nobuild --addons --version ${INSTALL_REF}
       - name: Upload Files
-        uses: softprops/action-gh-release@v1
+        uses: ncipollo/release-action@v1
         with:
-          tag_name: ${{ needs.release.outputs.version }}
+          tag: ${{ needs.release.outputs.version }}
           draft: true
           files: |
             lite-xl-${{ env.INSTALL_REF }}-linux-x86_64-portable.tar.gz
@@ -131,9 +132,9 @@ jobs:
           CROSS_ARCH=${{ matrix.arch }} bash scripts/package.sh --version ${INSTALL_REF} --debug --dmg --release
           CROSS_ARCH=${{ matrix.arch }} bash scripts/package.sh --version ${INSTALL_REF} --debug --addons --dmg --release
       - name: Upload Files
-        uses: softprops/action-gh-release@v1
+        uses: ncipollo/release-action@v1
         with:
-          tag_name: ${{ needs.release.outputs.version }}
+          tag: ${{ needs.release.outputs.version }}
           draft: true
           files: |
             ${{ env.INSTALL_NAME }}.dmg
@@ -187,9 +188,9 @@ jobs:
       - name: Build Installer With Addons
         run: bash scripts/innosetup/innosetup.sh --debug --version ${INSTALL_REF} --addons
       - name: Upload Files
-        uses: softprops/action-gh-release@v1
+        uses: ncipollo/release-action@v1
         with:
-          tag_name: ${{ needs.release.outputs.version }}
+          tag: ${{ needs.release.outputs.version }}
           draft: true
           files: |
             ${{ env.INSTALL_NAME }}.zip
