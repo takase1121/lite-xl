@@ -131,6 +131,7 @@ if not get_option('source-only')
         sdl_options += 'use_render=enabled'
         sdl_options += 'use_video_x11=auto'
         sdl_options += 'use_video_wayland=auto'
+        sdl_options += 'use_video_wayland_libdecor=enabled'
     endif
 
     # we leave this up to what the host system has except on windows
