@@ -6,6 +6,7 @@ lite_sources = [
     'api/process.c',
     'api/utf8.c',
     'renderer.c',
+    'svg_hooks_nanosvg.c',
     'renwindow.c',
     'rencache.c',
     'main.c',
