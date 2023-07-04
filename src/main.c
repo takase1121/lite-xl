@@ -277,6 +277,7 @@ init_lua:
   // reaping child processes
   ren_free_window_resources(&window_renderer);
   lua_close(L);
+  ren_free_global_resources();
 
   return EXIT_SUCCESS;
 }
