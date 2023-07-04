@@ -22,24 +22,24 @@ RenWindow window_renderer = {0};
 // A type used to identify a face
 typedef struct RenFontFaceID {
   int ref; // reference count
-  struct RenFontFaceID *next; // next face in MRU sequence
-  struct RenFontFaceID *prev; // prev face in MRU sequence
   char path[];
 } RenFontFaceID;
 
-// Number of face ID to cache.
-// This is probably enough, unless you load A LOT OF fonts
-#define FONT_FACE_ID_CACHED 64
+#define MAP_LOAD_FACTOR 0.75f
+#define MAP_INITIAL_SIZE 7
+
+// A hashmap to store all the loaded font face IDs
+typedef struct RenFontFaceIDMap {
+  int size, used;
+  RenFontFaceID **map;
+} RenFontFaceIDMap;
 
 // FreeType library and caches for all windows
 // TODO: make everything here MT-safe?
 static FT_Library ft_library;
 static FTC_Manager ft_cache_manager;
 static FTC_CMapCache ft_cmap_cache;
-
-// A linked list of face IDs with MRU behavior
-static RenFontFaceID *ft_face_ids_head = NULL;
-static RenFontFaceID *ft_face_ids_tail = NULL;
+static RenFontFaceIDMap loaded_face_ids;
 
 // draw_rect_surface is used as a 1x1 surface to simplify ren_draw_rect with blending
 static SDL_Surface *draw_rect_surface;
@@ -150,61 +150,69 @@ failure:
 #endif
 }
 
-static RenFontFaceID *font_face_get_id(const char *path) {
-  // find an existing face ID or create a new one
-  RenFontFaceID *id = NULL;
-  RenFontFaceID *current_id = ft_face_ids_head;
-  while (current_id != NULL) {
-    if (strcmp(current_id->path, path) == 0) {
-      id = current_id;
-      break;
-    }
-    current_id = current_id->next;
-  }
-  if (!id) {
-    // allocate a new ID
-    int len = strlen(path) + 1; // includes NUL terminator
-    id = check_alloc(malloc(sizeof(RenFontFaceID) + len));
-    strncpy(id->path, path, len);
-    id->next = id->prev = NULL;
-    id->ref = 0;
-    // append this ID to the end of list
-    if (ft_face_ids_tail) {
-      id->prev = ft_face_ids_tail;
-      ft_face_ids_tail->next = id;
-      ft_face_ids_tail = id;
-    } else {
-      ft_face_ids_head = id;
-      ft_face_ids_tail = id;
-    }
-  }
-  if (ft_face_ids_head != id) {
-    // move this id to the top of the list
-    // remove itself from the list
-    id->prev->next = id->next;
-    if (id->next) id->next->prev = id->prev;
-    if (ft_face_ids_tail == id) ft_face_ids_tail = id->prev;
+// 32-bit FNV-1a hash
+static uint32_t hash(const char *str) {
+  uint32_t h =  2166136261;
+  while (*str)
+    h = (h ^ *str++) * 16777619;
+  return h;
+}
 
-    // set itself as head
-    id->prev = NULL;
-    id->next = ft_face_ids_head;
-    ft_face_ids_head->prev = id;
-    ft_face_ids_head = id;
+static void hash_insert(RenFontFaceIDMap *map, RenFontFaceID *id) {
+  if (((float) map->used / (float) map->size) > MAP_LOAD_FACTOR) {
+    // resize the hashtable
+    RenFontFaceIDMap new_map = {
+      .used = 0, .size = map->size * 2,
+      .map = check_alloc(calloc(map->size * 2, sizeof(RenFontFaceID *)))
+    };
+    for (int i = 0; i < map->size; ++i) {
+      if (map->map[i])
+        hash_insert(&new_map, map->map[i]);
+    }
+    memcpy(map, &new_map, sizeof(RenFontFaceIDMap));
   }
-  id->ref++;
-  return id;
+  int idx = hash(id->path) % map->size;
+  while (map->map[idx])
+    idx = (idx + 1) % map->size;
+  map->map[idx] = id;
+  map->used++;
+}
+
+static int hash_get_idx(RenFontFaceIDMap *map, const char *path) {
+  int idx = hash(path) % map->size;
+  for (int count = 0; count < map->used; ++count) {
+    if (map->map[idx] && strcmp(map->map[idx]->path, path) == 0)
+      return idx;
+    idx = (idx + 1) % map->size;
+  }
+  return -1;
+}
+
+static void hash_remove(RenFontFaceIDMap *map, const char *path) {
+  int idx = hash_get_idx(map, path);
+  if (idx >= 0) {
+    map->map[idx] = NULL;
+    map->used--;
+  }
+}
+
+static RenFontFaceID *font_face_get_id(const char *path) {
+  int idx = hash_get_idx(&loaded_face_ids, path);
+  if (idx == -1) {
+    // allocate face ID and insert it
+    int len = strlen(path) + 1; // including NUL character
+    RenFontFaceID *id = check_alloc(calloc(1, sizeof(RenFontFaceID) + len));
+    strncpy(id->path, path, len);
+    hash_insert(&loaded_face_ids, id);
+    return id;
+  }
+  return loaded_face_ids.map[idx];
 }
 
 static void font_face_free_id(RenFontFaceID *id) {
   if (id && (--id->ref) == 0) {
-    FTC_Manager_RemoveFaceID(ft_cache_manager, id);
-    // remove itself from list
-    if (ft_face_ids_head == id)
-      ft_face_ids_head = id->next;
-    if (ft_face_ids_tail == id)
-      ft_face_ids_tail = id->prev;
-    if (id->prev) id->prev->next = id->next;
-    if (id->next) id->next->prev = id->prev;
+    FTC_Manager_RemoveFaceID(ft_cache_manager, (FTC_FaceID) id);
+    hash_remove(&loaded_face_ids, id->path);
     free(id);
   }
 }
@@ -604,16 +612,13 @@ void ren_free_window_resources(RenWindow *window_renderer) {
 }
 
 void ren_free_global_resources() {
-  RenFontFaceID *current_id = ft_face_ids_head;
-  while (current_id) {
-    RenFontFaceID *temp = current_id;
-    FTC_Manager_RemoveFaceID(ft_cache_manager, temp);
-    current_id = current_id->next;
-    free(temp);
-  }
   FTC_Manager_Done(ft_cache_manager);
   FT_Done_FreeType(ft_library);
   SDL_FreeSurface(draw_rect_surface);
+  for (int i = 0; i < loaded_face_ids.size; ++i)
+    free(loaded_face_ids.map[i]);
+  free(loaded_face_ids.map);
+  memset(&loaded_face_ids, 0, sizeof(RenFontFaceIDMap));
 }
 
 // TODO remove global and return RenWindow*
@@ -640,6 +645,9 @@ void ren_init(SDL_Window *win) {
   renwin_clip_to_surface(&window_renderer);
   draw_rect_surface = SDL_CreateRGBSurface(0, 1, 1, 32,
                        0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
+  loaded_face_ids.map = check_alloc(calloc(MAP_INITIAL_SIZE, sizeof(RenFontFaceID *)));
+  loaded_face_ids.size = MAP_INITIAL_SIZE;
+  loaded_face_ids.used = 0;
 }
 
 
