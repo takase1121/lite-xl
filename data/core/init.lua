@@ -287,10 +287,8 @@ end
 ---@param path string The path to the project.
 ---@return core.project_directory
 function core.add_project_directory(path)
-  -- top directories has a file-like "item" but the item.filename
-  -- will be simply the name of the directory, without its path.
-  -- The field item.topdir will identify it as a top level directory.
-  path = common.normalize_volume(path)
+  path = common.normalize_volume(path) --[[@as string]]
+  ---@type core.project_directory
   local topdir = {
     name = path,
     item = {filename = common.basename(path), type = "dir", topdir = true},
@@ -298,7 +296,10 @@ function core.add_project_directory(path)
     is_dirty = true,
     shown_subdir = {},
     watch_thread = nil,
-    watch = dirwatch.new()
+    watch = dirwatch.new(),
+    files = {},
+    force_scans = false,
+    slow_filesystem = false
   }
   table.insert(core.project_directories, topdir)
 
