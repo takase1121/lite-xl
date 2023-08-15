@@ -17,12 +17,34 @@ local Doc
 
 local core = {}
 
+---A file-like item specific to project directories, which contains topdir = true.
+---@class core.project_directory_item
+---@field filename string The project name without its path.
+---@field type "dir"
+---@field topdir true
+
+---An object storing data for a project directory.
+---@class core.project_directory
+---@field name string The path of the project.
+---@field item core.project_directory_item A file-like item that contains topdir = true.
+---@field files any[] A list of files indexed by the project.
+---@field is_dirty boolean True if project files are changed.
+---@field files_limit boolean True if the project exceeds the maximum file limit.
+---@field force_scans boolean If true, directory scanning used instead of monitoring.
+---@field slow_filesystem boolean True if the filesystem is slow to index, e.g. FUSE network filesystems.
+---@field shown_subdir { [string]: true } A list of subdirectories that are being shown.
+---@field watch_thread thread|nil A thread to scan for directory changes.
+---@field watch core.dirwatch A directory watcher associated to the project directory.
+
+
+---Loads the user's previous session data.
 local function load_session()
   local ok, t = pcall(dofile, USERDIR .. PATHSEP .. "session.lua")
   return ok and t or {}
 end
 
 
+---Saves the user session data to the file.
 local function save_session()
   local fp = io.open(USERDIR .. PATHSEP .. "session.lua", "w")
   if fp then
@@ -37,6 +59,9 @@ local function save_session()
 end
 
 
+---Adds or removes projects from the recently opened projects list.
+---@param action "add"|"remove"
+---@param dir_path_abs string
 local function update_recents_project(action, dir_path_abs)
   local dirname = common.normalize_volume(dir_path_abs)
   if not dirname then return end
@@ -53,7 +78,10 @@ local function update_recents_project(action, dir_path_abs)
   end
 end
 
-
+---Changes the project directory.
+---@param new_dir string The path to the new project directory.
+---@param change_project_fn function A callback called after the project directory is changed.
+---@return boolean chdir_success
 function core.set_project_dir(new_dir, change_project_fn)
   local chdir_ok = pcall(system.chdir, new_dir)
   if chdir_ok then
@@ -65,6 +93,8 @@ function core.set_project_dir(new_dir, change_project_fn)
 end
 
 
+---Reloads the user and project module.
+---This function is usually called when a new project is added.
 local function reload_customizations()
   local user_error = not core.load_user_directory()
   local project_error = not core.load_project_module()
@@ -86,6 +116,8 @@ local function reload_customizations()
 end
 
 
+---Opens a project directory.
+---@param dir_path_abs string An absolute path to the project directory.
 function core.open_folder_project(dir_path_abs)
   if core.set_project_dir(dir_path_abs, core.on_quit_project) then
     core.root_view:close_all_docviews()
@@ -109,6 +141,10 @@ local function strip_trailing_slash(filename)
 end
 
 
+---Checks whether the subdirectory should be shown, possibly due to file limits.
+---@param dir core.project_directory The project directory object.
+---@param filename string The filename relative to the project.
+---@return boolean shown
 function core.project_subdir_is_shown(dir, filename)
   return not dir.files_limit or dir.shown_subdir[filename]
 end
@@ -126,7 +162,7 @@ local function show_max_files_warning(dir)
 end
 
 
--- bisects the sorted file list to get to things in ln(n)
+---Performs binary search on a list of files.
 local function file_bisect(files, is_superior, start_idx, end_idx)
   local inf, sup = start_idx or 1, end_idx or #files
   while sup - inf > 8 do
@@ -247,6 +283,9 @@ local function timed_max_files_pred(dir, filename, entries_count, t_elapsed)
 end
 
 
+---Adds a path to a list of currently open project directories.
+---@param path string The path to the project.
+---@return core.project_directory
 function core.add_project_directory(path)
   -- top directories has a file-like "item" but the item.filename
   -- will be simply the name of the directory, without its path.
@@ -320,8 +359,8 @@ function core.add_project_directory(path)
 end
 
 
--- The function below is needed to reload the project directories
--- when the project's module changes.
+---Reloads all project directories.
+---This function is called when project's module is changed.
 function core.rescan_project_directories()
   local save_project_dirs = {}
   local n = #core.project_directories
@@ -361,7 +400,9 @@ function core.rescan_project_directories()
   end
 end
 
-
+---Gets the project directory object by its name.
+---@param name string The name of the project.
+---@return core.project_directory|nil
 function core.project_dir_by_name(name)
   for i = 1, #core.project_directories do
     if core.project_directories[i].name == name then
@@ -371,6 +412,13 @@ function core.project_dir_by_name(name)
 end
 
 
+---Updates the project subdirectory state and watches / unwatches the subdirectory when necessary.
+---
+---This function should only be called when the project exceeds the maximum file limit.
+---@param dir core.project_directory
+---@param filename string
+---@param expanded boolean
+---@return boolean
 function core.update_project_subdir(dir, filename, expanded)
   assert(dir.files_limit, "function should be called only when directory is in files limit mode")
   dir.shown_subdir[filename] = expanded
