@@ -168,7 +168,6 @@ jobs:
       run: bash scripts/install-dependencies.sh --debug
     - name: Build
       run: |
-        gcc -v
         bash --version
         bash scripts/build.sh -U --debug --forcefallback
     - name: Package
@@ -177,7 +176,9 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: Windows Artifacts
-        path: ${{ env.INSTALL_NAME }}.zip
+        path: |
+          ${{ env.INSTALL_NAME }}.zip
+          build-*/
 
   build_windows_msvc:
     name: Windows (MSVC)
