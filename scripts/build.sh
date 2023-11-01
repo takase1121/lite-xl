@@ -197,7 +197,7 @@ main() {
     $pgo \
     "${build_dir}"
 
-  meson compile -C "${build_dir}"
+  meson compile -v -C "${build_dir}"
 
   if [[ $pgo != "" ]]; then
     cp -r data "${build_dir}/src"
