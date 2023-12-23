@@ -153,25 +153,23 @@ jobs:
     - name: Workaround link.exe issues with bash
       run: |
         mv /usr/bin/link /usr/bin/gnu-link
-    - name: Add poetry to PATH
-      shell: pwsh
-      run: echo "$env:USERPROFILE\.local\bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
-    - name: Load cached poetry install
-      id: cached-poetry
-      uses: actions/cache@v3
-      with:
-        path: ~/.local
-        key: poetry-0
-    - run: echo $PATH
-    - name: Install Poetry
-      if: steps.cached-poetry.outputs.cache-hit != 'true'
-      uses: snok/install-poetry@v1
-    - uses: actions/setup-python@v4
+    - name: Set up python
+      id: setup-python
+      uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-        cache: 'poetry'
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+    - name: Load cached venv
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache
+        key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
     - name: Install meson and ninja
-      run: poetry install -C ci
+      run: poetry install --no-interaction -C ci
     - name: Install zip
       run: choco install zip
     - name: Set Environment Variables
@@ -184,9 +182,7 @@ jobs:
       run: bash scripts/install-dependencies.sh --debug
     - name: Build
       run: |
-        ls "$(poetry env info --path -C ci)"
-        ls "$(poetry env info --path -C ci)/bin"
-        source "$(poetry env info --path -C ci)/bin/activate"
+        source $VENV
         bash --version
         bash scripts/build.sh -U --debug --forcefallback
     - name: Package
