@@ -159,7 +159,7 @@ jobs:
     - name: Install meson and ninja
       run: pip install meson ninja
     - name: Install zip
-      run: winget install GnuWin32.Zip --disable-interactivity --accept-source-agreements
+      run: choco install zip
     - name: Set Environment Variables
       run: |
         echo "$HOME/.local/bin" >> "$GITHUB_PATH"
