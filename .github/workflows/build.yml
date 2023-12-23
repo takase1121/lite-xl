@@ -160,7 +160,7 @@ jobs:
         python-version: '3.11'
         cache: 'poetry'
     - name: Install meson and ninja
-      run: cd ci; poetry install
+      run: poetry install -C ci
     - name: Install zip
       run: choco install zip
     - name: Set Environment Variables
@@ -173,9 +173,7 @@ jobs:
       run: bash scripts/install-dependencies.sh --debug
     - name: Build
       run: |
-        pushd ci
-        poetry shell
-        popd
+        source "$(poetry env info --path -C ci)/bin/activate"
         bash --version
         bash scripts/build.sh -U --debug --forcefallback
     - name: Package
