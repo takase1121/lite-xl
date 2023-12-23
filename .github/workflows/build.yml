@@ -174,15 +174,15 @@ jobs:
       with:
         path: ~/.cache
         key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
-    - name: Install meson and ninja
-      run: poetry install --no-interaction --no-root -C ci
-    - name: Install zip
-      run: choco install zip
     - name: Set Environment Variables
       run: |
         echo "$HOME/.local/bin" >> "$GITHUB_PATH"
         echo "INSTALL_REF=${GITHUB_REF##*/}" >> "$GITHUB_ENV"
         echo "INSTALL_NAME=lite-xl-${GITHUB_REF##*/}-windows-${{ matrix.config.mingw }}" >> "$GITHUB_ENV"
+    - name: Install meson and ninja
+      run: poetry install --no-interaction --no-root -C ci
+    - name: Install zip
+      run: choco install zip
     - name: Install Dependencies
       if: false
       run: bash scripts/install-dependencies.sh --debug
