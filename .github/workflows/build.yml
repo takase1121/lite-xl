@@ -138,9 +138,9 @@ jobs:
     runs-on: windows-2019
     strategy:
       matrix:
-        arch:
-          - { target: x86, name: i686, msystem: MINGW32 }
-          - { target: amd64, name: x86_64, msystem: MINGW64 }
+        config:
+          - { vc_arch: x86, msystem: MINGW32 }
+          - { vc_arch: amd64, msystem: MINGW64 }
     defaults:
       run:
         shell: msys2 {0}
@@ -151,13 +151,14 @@ jobs:
       with:
         msystem: ${{ matrix.config.msystem }}
         release: false
+        pacboy: true
         install: >-
           zip
-          mingw-w64-${{ matrix.config.arch }}-ntldd
+          ntldd:x
     - name: Export path to vcvarsall.bat
       uses: TheMrMilchmann/setup-msvc-dev@v3.0.0
       with:
-        arch: ${{ matrix.arch.target }}
+        arch: ${{ matrix.config.target }}
         export-path-to-vcvarsall: VCVARSALL_PATH
     - uses: actions/setup-python@v4
       with:
@@ -180,7 +181,7 @@ jobs:
       run: |
         bash --version
         # this will import important MSVC environment variables locally, without affecting others
-        [[ -n "$VCVARSALL_PATH" ]] && "$(cygpath "$VCVARSALL_PATH")" ${{ matrix.config.arch }}
+        [[ -n "$VCVARSALL_PATH" ]] && "$(cygpath "$VCVARSALL_PATH")" ${{ matrix.config.vc_arch }}
         bash scripts/build.sh -U --debug --forcefallback
     - name: Package
       run: bash scripts/package.sh --version ${INSTALL_REF} --debug --binary
