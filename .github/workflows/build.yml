@@ -157,7 +157,7 @@ jobs:
       id: cached-poetry
       uses: actions/cache@v3
       with:
-        path: ~\AppData\Roaming\pypoetry
+        path: ~/.local
         key: poetry-0
     - name: Install Poetry
       if: steps.cached-poetry.outputs.cache-hit != 'true'
