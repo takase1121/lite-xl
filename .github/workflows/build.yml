@@ -154,12 +154,8 @@ jobs:
       run: |
         mv /usr/bin/link /usr/bin/gnu-link
     - name: Add poetry to PATH
-      run: |
-        echo $GITHUB_PATH
-        cat $GITHUB_PATH
-        echo "$(cygpath -w "$HOME/.local/bin")" >> $GITHUB_PATH
-        cat $GITHUB_PATH
-
+      shell: cmd
+      run: echo %USERPROFILE%\.local\bin >> %GITHUB_PATH%
     - name: Load cached poetry install
       id: cached-poetry
       uses: actions/cache@v3
