@@ -180,8 +180,8 @@ jobs:
       if: steps.cached-build-tools.outputs.cache-hit != 'true'
       shell: pwsh
       run: |
-        Invoke-WebRequest -OutFile "~/.local/bin/unzip.exe" -URI "https://downloads.sourceforge.net/project/gnuwin32/unzip/5.51-1/unzip-5.51-1.exe"
-        Invoke-WebRequest -OutFile "zip-bin.zip" -URI "https://downloads.sourceforge.net/project/gnuwin32/zip/3.0/zip-3.0-bin.zip"
+        Invoke-WebRequest -UserAgent Wget -OutFile "~/.local/bin/unzip.exe" -URI "https://downloads.sourceforge.net/project/gnuwin32/unzip/5.51-1/unzip-5.51-1.exe"
+        Invoke-WebRequest -UserAgent Wget -OutFile "zip-bin.zip" -URI "https://downloads.sourceforge.net/project/gnuwin32/zip/3.0/zip-3.0-bin.zip"
         7z e zip-bin.zip "-o$env:USERPROFILE/.local/bin" -y bin/zip.exe
     - name: Install Dependencies
       if: false
