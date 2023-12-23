@@ -143,41 +143,34 @@ jobs:
           - { vc: amd64, mingw: x86_64, msystem: MINGW64 }
     defaults:
       run:
-        shell: msys2 {0}
+        shell: bash {0}
     steps:
     - uses: actions/checkout@v3
-    - name: Install zip and ntldd with MSYS2
-      uses: msys2/setup-msys2@v2
-      with:
-        msystem: ${{ matrix.config.msystem }}
-        release: false
-        install: >-
-          zip
-          mingw-w64-${{ matrix.config.mingw }}-ntldd
-          mingw-w64-${{ matrix.config.mingw }}-meson
-          mingw-w64-${{ matrix.config.mingw }}-ninja
-    - name: Export path to vcvarsall.bat
+    - name: Export MSVC environment variables
       uses: TheMrMilchmann/setup-msvc-dev@v3.0.0
       with:
         arch: ${{ matrix.config.vc }}
-        export-path-to-vcvarsall: VCVARSALL_PATH
+    - name: Workaround link.exe issues with bash
+      run: |
+        mv /usr/bin/link /usr/bin/gnu-link
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+    - name: Install meson and ninja
+      run: pip install meson ninja
+    - name: Install zip
+      run: winget install GnuWin32.Zip --disable-interactivity --accept-source-agreements
     - name: Set Environment Variables
       run: |
         echo "$HOME/.local/bin" >> "$GITHUB_PATH"
         echo "INSTALL_REF=${GITHUB_REF##*/}" >> "$GITHUB_ENV"
-        if [[ "${MSYSTEM}" == "MINGW64" ]]; then
-          echo "INSTALL_NAME=lite-xl-${GITHUB_REF##*/}-windows-x86_64" >> "$GITHUB_ENV"
-        else
-          echo "INSTALL_NAME=lite-xl-${GITHUB_REF##*/}-windows-i686" >> "$GITHUB_ENV"
-        fi
+        echo "INSTALL_NAME=lite-xl-${GITHUB_REF##*/}-windows-${{ matrix.config.mingw }}" >> "$GITHUB_ENV"
     - name: Install Dependencies
       if: false
       run: bash scripts/install-dependencies.sh --debug
     - name: Build
       run: |
         bash --version
-        # this will import important MSVC environment variables locally, without affecting others
-        [[ -n "$VCVARSALL_PATH" ]] && "$(cygpath "$VCVARSALL_PATH")/vcvarsall.bat" ${{ matrix.config.vc }}
         bash scripts/build.sh -U --debug --forcefallback
     - name: Package
       run: bash scripts/package.sh --version ${INSTALL_REF} --debug --binary
