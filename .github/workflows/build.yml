@@ -139,8 +139,8 @@ jobs:
     strategy:
       matrix:
         config:
-          - { vc_arch: x86, msystem: MINGW32 }
-          - { vc_arch: amd64, msystem: MINGW64 }
+          - { vc: x86, mingw: i686, msystem: MINGW32 }
+          - { vc: amd64, mingw: x86_64, msystem: MINGW64 }
     defaults:
       run:
         shell: msys2 {0}
@@ -154,17 +154,14 @@ jobs:
         pacboy: true
         install: >-
           zip
-          ntldd:x
+          mingw-w64-${{ matrix.config.mingw }}-ntldd
+          mingw-w64-${{ matrix.config.mingw }}-meson
+          mingw-w64-${{ matrix.config.mingw }}-ninja
     - name: Export path to vcvarsall.bat
       uses: TheMrMilchmann/setup-msvc-dev@v3.0.0
       with:
-        arch: ${{ matrix.config.target }}
+        arch: ${{ matrix.config.vc }}
         export-path-to-vcvarsall: VCVARSALL_PATH
-    - uses: actions/setup-python@v4
-      with:
-        python-version: '3.x'
-    - name: Install meson and ninja
-      run: pip install meson ninja
     - name: Set Environment Variables
       run: |
         echo "$HOME/.local/bin" >> "$GITHUB_PATH"
@@ -181,7 +178,7 @@ jobs:
       run: |
         bash --version
         # this will import important MSVC environment variables locally, without affecting others
-        [[ -n "$VCVARSALL_PATH" ]] && "$(cygpath "$VCVARSALL_PATH")" ${{ matrix.config.vc_arch }}
+        [[ -n "$VCVARSALL_PATH" ]] && "$(cygpath "$VCVARSALL_PATH")" ${{ matrix.config.vc }}
         bash scripts/build.sh -U --debug --forcefallback
     - name: Package
       run: bash scripts/package.sh --version ${INSTALL_REF} --debug --binary
