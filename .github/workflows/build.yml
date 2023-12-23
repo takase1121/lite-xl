@@ -173,7 +173,7 @@ jobs:
     - name: Load cached venv
       uses: actions/cache@v3
       with:
-        path: .venv
+        path: ci/.venv
         key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
     - name: Set Environment Variables
       run: |
