@@ -192,7 +192,9 @@ jobs:
         bash --version
         bash scripts/build.sh -U --debug --forcefallback
     - name: Package
-      run: bash scripts/package.sh --version ${INSTALL_REF} --debug --binary
+      run: |
+        source "$(poetry env info --path -C ci)/Scripts/activate"
+        bash scripts/package.sh --version ${INSTALL_REF} --debug --binary
     - name: Upload Artifacts
       uses: actions/upload-artifact@v3
       with:
