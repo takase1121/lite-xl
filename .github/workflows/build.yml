@@ -153,11 +153,14 @@ jobs:
     - name: Workaround link.exe issues with bash
       run: |
         mv /usr/bin/link /usr/bin/gnu-link
+    - name: Install poetry
+      run: pipx install poetry
     - uses: actions/setup-python@v4
       with:
-        python-version: '3.x'
+        python-version: '3.11'
+        cache: 'poetry'
     - name: Install meson and ninja
-      run: pip install meson ninja
+      run: cd ci; poetry install
     - name: Install zip
       run: choco install zip
     - name: Set Environment Variables
@@ -170,6 +173,9 @@ jobs:
       run: bash scripts/install-dependencies.sh --debug
     - name: Build
       run: |
+        pushd ci
+        poetry shell
+        popd
         bash --version
         bash scripts/build.sh -U --debug --forcefallback
     - name: Package
