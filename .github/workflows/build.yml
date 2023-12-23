@@ -188,7 +188,7 @@ jobs:
       run: bash scripts/install-dependencies.sh --debug
     - name: Build
       run: |
-        source $VENV
+        source "$(poetry env info --path -C ci)/Scripts/activate"
         bash --version
         bash scripts/build.sh -U --debug --forcefallback
     - name: Package
