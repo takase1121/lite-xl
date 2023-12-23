@@ -178,9 +178,10 @@ jobs:
       run: poetry install --no-interaction --no-root -C ci
     - name: Install zip and unzip
       if: steps.cached-build-tools.outputs.cache-hit != 'true'
+      shell: pwsh
       run: |
-        wget -O zip-bin.zip "https://downloads.sourceforge.net/project/gnuwin32/zip/3.0/zip-3.0-bin.zip"
-        wget -O ~/.local/bin/unzip.exe "https://downloads.sourceforge.net/project/gnuwin32/unzip/5.51-1/unzip-5.51-1.exe"
+        Invoke-WebRequest -OutFile "~/.local/bin/unzip.exe" -URI "https://downloads.sourceforge.net/project/gnuwin32/unzip/5.51-1/unzip-5.51-1.exe"
+        Invoke-WebRequest -OutFile "zip-bin.zip" -URI "https://downloads.sourceforge.net/project/gnuwin32/zip/3.0/zip-3.0-bin.zip"
         7za e zip-bin.zip -o ~/.local/bin bin/zip.exe
     - name: Install Dependencies
       if: false
