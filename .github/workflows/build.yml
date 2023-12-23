@@ -163,6 +163,11 @@ jobs:
     #       mingw-w64-${{ matrix.config.arch }}-ninja
     #       mingw-w64-${{ matrix.config.arch }}-ca-certificates
     #       mingw-w64-${{ matrix.config.arch }}-ntldd
+    - name: Workaround Git bash and MSVC linker issue
+      run:
+        # this is needed, https://github.com/ilammy/msvc-dev-cmd?tab=readme-ov-file#name-conflicts-with-shell-bash
+        # we have no other problems with this, so this workaround is worth it
+        mv /usr/bin/link /usr/bin/gnu-link
     - uses: ilammy/msvc-dev-cmd@v1
       with:
         arch: ${{ matrix.arch.target }}
