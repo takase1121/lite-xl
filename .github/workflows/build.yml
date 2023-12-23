@@ -177,9 +177,7 @@ jobs:
       run: |
         bash --version
         # this will import important MSVC environment variables locally, without affecting others
-        echo "$VCVARSALL_PATH"
-        ls -lah "$(cygpath "$VCVARSALL_PATH")"
-        [[ -n "$VCVARSALL_PATH" ]] && "$(cygpath "$VCVARSALL_PATH")" ${{ matrix.config.vc }}
+        [[ -n "$VCVARSALL_PATH" ]] && "$(cygpath "$VCVARSALL_PATH")/vcvarsall.bat" ${{ matrix.config.vc }}
         bash scripts/build.sh -U --debug --forcefallback
     - name: Package
       run: bash scripts/package.sh --version ${INSTALL_REF} --debug --binary
