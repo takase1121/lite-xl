@@ -151,7 +151,6 @@ jobs:
       with:
         msystem: ${{ matrix.config.msystem }}
         release: false
-        pacboy: true
         install: >-
           zip
           mingw-w64-${{ matrix.config.mingw }}-ntldd
