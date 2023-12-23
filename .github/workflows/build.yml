@@ -173,6 +173,8 @@ jobs:
       run: bash scripts/install-dependencies.sh --debug
     - name: Build
       run: |
+        ls "$(poetry env info --path -C ci)"
+        ls "$(poetry env info --path -C ci)/bin"
         source "$(poetry env info --path -C ci)/bin/activate"
         bash --version
         bash scripts/build.sh -U --debug --forcefallback
