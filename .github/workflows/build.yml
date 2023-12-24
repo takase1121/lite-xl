@@ -175,7 +175,10 @@ jobs:
         virtualenvs-create: true
         virtualenvs-path: ~/.local/virtualenvs
     - name: Install meson and ninja
-      run: poetry install --no-interaction --no-root -C ci
+      run: |
+        # this doesn't restore properly when cached
+        poetry config virtualenvs.path ~/.local/virtualenvs
+        poetry install --no-interaction --no-root -C ci
     - name: Install zip and unzip
       if: steps.cached-build-tools.outputs.cache-hit != 'true'
       shell: pwsh
