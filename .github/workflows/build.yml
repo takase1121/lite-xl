@@ -180,9 +180,8 @@ jobs:
       if: steps.cached-build-tools.outputs.cache-hit != 'true'
       shell: pwsh
       run: |
-        Invoke-WebRequest -SslProtocol Tls12 -UserAgent Wget -OutFile "~/.local/bin/unzip.exe" -URI "https://downloads.sourceforge.net/project/gnuwin32/unzip/5.51-1/unzip-5.51-1.exe"
-        Invoke-WebRequest -SslProtocol Tls12 -UserAgent Wget -OutFile "zip-bin.zip" -URI "https://downloads.sourceforge.net/project/gnuwin32/zip/3.0/zip-3.0-bin.zip"
-        7z e zip-bin.zip "-o$env:USERPROFILE/.local/bin" -y bin/zip.exe
+        Invoke-WebRequest -OutFile "infozip.zip" -URI "https://www.willus.com/archive/zip64/infozip_binaries_win64.zip"
+        7z e infozip.zip "-o$env:USERPROFILE/.local/bin" -y zip.exe unzip.exe
     - name: Install Dependencies
       if: false
       run: bash scripts/install-dependencies.sh --debug
