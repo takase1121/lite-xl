@@ -195,6 +195,7 @@ main() {
     $bundle \
     $portable \
     $pgo \
+    --backend vs
     "${build_dir}"
 
   meson compile -C "${build_dir}"
