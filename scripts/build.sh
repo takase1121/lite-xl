@@ -188,7 +188,7 @@ main() {
     fi
   fi
 
-  if [[ -n VSCMD_VER ]]; then
+  if [[ -n $VSCMD_VER ]]; then
     vs_backend="--backend vs"
   fi
 
