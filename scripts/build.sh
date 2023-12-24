@@ -188,10 +188,6 @@ main() {
     fi
   fi
 
-  if [[ -n $VSCMD_VER ]]; then
-    vs_backend="--backend vs"
-  fi
-
   CFLAGS=$CFLAGS LDFLAGS=$LDFLAGS meson setup \
     --buildtype=$build_type \
     --prefix "$prefix" \
@@ -200,7 +196,6 @@ main() {
     $bundle \
     $portable \
     $pgo \
-    $vs_backend \
     "${build_dir}"
 
   meson compile -C "${build_dir}"
