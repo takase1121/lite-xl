@@ -51,6 +51,7 @@ main() {
   local cross_platform
   local cross_arch
   local cross_file
+  local vs_backend
 
   local lua_subproject_path
 
@@ -187,6 +188,10 @@ main() {
     fi
   fi
 
+  if [[ -n VSCMD_VER ]]; then
+    vs_backend="--backend vs"
+  fi
+
   CFLAGS=$CFLAGS LDFLAGS=$LDFLAGS meson setup \
     --buildtype=$build_type \
     --prefix "$prefix" \
@@ -195,7 +200,7 @@ main() {
     $bundle \
     $portable \
     $pgo \
-    --backend vs
+    $vs_backend \
     "${build_dir}"
 
   meson compile -C "${build_dir}"
