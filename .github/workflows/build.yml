@@ -235,6 +235,7 @@ jobs:
     steps:
       - run: |
           Get-Command docker
+          Get-Command DockerCli
           & $Env:ProgramFiles\Docker\Docker\DockerCli.exe -SwitchDaemon
           docker pull mcr.microsoft.com/windows/nanoserver:ltsc2022
           docker run docker run -t mcr.microsoft.com/windows/nanoserver:ltsc2022 cmd.exe /c "echo hello"
