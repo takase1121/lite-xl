@@ -229,7 +229,11 @@ jobs:
   build_windows_container:
     name: Windows (MSVC) container
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
     steps:
       - run: |
+          & $Env:ProgramFiles\Docker\Docker\DockerCli.exe -SwitchDaemon
           docker pull mcr.microsoft.com/windows/nanoserver:ltsc2022
           docker run docker run -t mcr.microsoft.com/windows/nanoserver:ltsc2022 cmd.exe /c "echo hello"
