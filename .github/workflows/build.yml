@@ -225,3 +225,10 @@ jobs:
         with:
           name: Windows Artifacts (MSVC)
           path: ${{ env.INSTALL_NAME }}.zip
+
+  build_windows_container:
+    name: Windows (MSVC) container
+    runs-on: windows-latest
+    steps:
+      - run: |
+          docker run docker run -t mcr.microsoft.com/windows/nanoserver:ltsc2022 cmd.exe /c "echo hello"
