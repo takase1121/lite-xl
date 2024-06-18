@@ -275,7 +275,7 @@ jobs:
           Compress-Archive -Path lite-xl -DestinationPath "$env:INSTALL_NAME.zip"
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: Windows Artifacts (MSVC ${{ matrix.arch.target }})
           path: ${{ env.INSTALL_NAME }}.zip
