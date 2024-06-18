@@ -33,10 +33,10 @@ jobs:
           echo "INSTALL_NAME=lite-xl-${GITHUB_REF##*/}-linux-$(uname -m)-portable" >> "$GITHUB_ENV"
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Python Setup
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: "3.11"
 
