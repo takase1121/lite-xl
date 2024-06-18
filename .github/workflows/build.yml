@@ -33,10 +33,10 @@ jobs:
           echo "INSTALL_NAME=lite-xl-${GITHUB_REF##*/}-linux-$(uname -m)-portable" >> "$GITHUB_ENV"
 
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Python Setup
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
@@ -275,7 +275,7 @@ jobs:
           Compress-Archive -Path lite-xl -DestinationPath "$env:INSTALL_NAME.zip"
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Windows Artifacts (MSVC ${{ matrix.arch.target }})
           path: ${{ env.INSTALL_NAME }}.zip
