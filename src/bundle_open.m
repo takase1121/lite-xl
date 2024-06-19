@@ -1,5 +1,6 @@
 #import <Foundation/Foundation.h>
 #include <lua.h>
+#include <objc/runtime.h>
 
 #ifdef MACOS_USE_BUNDLE
 void set_macos_bundle_resources(lua_State *L)
@@ -22,8 +23,14 @@ void enable_momentum_scroll() {
  * we don't use any state restoration; setting this to make macOS happy
  * https://github.com/libsdl-org/SDL/pull/6061/files#diff-11d3bf36cd6fea9d46b9a3ca1ff43e9ade6af1330239529efdd2d68174541b5d
  */
-@implementation SDLAppDelegate : NSObject
-- (BOOL)applicationSupportsSecureRestorableState:(NSApplication *)app {
-  return YES;
+BOOL swizzled_applicationSupportsSecureRestorableState(id __unused self, SEL __unused _cmd) {
+    return YES;
 }
-@end
+
+/* this function uses method swizzling to replace SDLAppDelegate methods on the fly */
+void enable_secure_restorable_state() {
+  @autoreleasepool {
+    __auto_type method = class_getClassMethod(objc_getClass("SDLAppDelegate"), NSSelectorFromString(@"applicationSupportsSecureRestorableState"));
+    method_setImplementation(method, (IMP) swizzled_applicationSupportsSecureRestorableState);
+  }
+}

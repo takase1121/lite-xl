@@ -85,6 +85,7 @@ static void init_window_icon(void) {
 
 #ifdef __APPLE__
 void enable_momentum_scroll();
+void enable_secure_restorable_state();
 #ifdef MACOS_USE_BUNDLE
 void set_macos_bundle_resources(lua_State *L);
 #endif
@@ -125,6 +126,8 @@ void set_macos_bundle_resources(lua_State *L);
 int main(int argc, char **argv) {
 #ifndef _WIN32
   signal(SIGPIPE, SIG_IGN);
+#elif __APPLE__
+  enable_secure_restorable_state();
 #endif
 
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0) {
