@@ -18,3 +18,12 @@ void enable_momentum_scroll() {
     forKey: @"AppleMomentumScrollSupported"];
 }
 
+/* https://developer.apple.com/documentation/macos-release-notes/appkit-release-notes-for-macos-12#Restorable-State
+ * we don't use any state restoration; setting this to make macOS happy
+ * https://github.com/libsdl-org/SDL/pull/6061/files#diff-11d3bf36cd6fea9d46b9a3ca1ff43e9ade6af1330239529efdd2d68174541b5d
+ */
+@implementation SDLAppDelegate : NSObject
+- (BOOL)applicationSupportsSecureRestorableState:(NSApplication *)app {
+  return YES;
+}
+@end
