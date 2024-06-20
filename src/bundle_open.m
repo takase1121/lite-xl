@@ -32,8 +32,17 @@ BOOL swizzled_applicationSupportsSecureRestorableState(id __unused self, SEL __u
 /* this function uses method swizzling to replace SDLAppDelegate methods on the fly */
 void enable_secure_restorable_state() {
   @autoreleasepool {
-    __auto_type method = class_getClassMethod(objc_getClass("SDLAppDelegate"), NSSelectorFromString(@"applicationSupportsSecureRestorableState"));
-    method_setImplementation(method, (IMP) swizzled_applicationSupportsSecureRestorableState);
-    puts("SDLAppDelegate overridden");
+    SEL applicationSupportsSecureRestorableState = NSSelectorFromString(@"applicationSupportsSecureRestorableState");
+    Class cls = objc_getClass("SDLAppDelegate");
+    if (!cls) return;
+    
+    Method method = class_getInstanceMethod(cls, applicationSupportsSecureRestorableState);
+    if (!method) {
+      // add the method
+      class_addMethod(cls, applicationSupportsSecureRestorableState, (IMP) swizzled_applicationSupportsSecureRestorableState, "B@:");
+    } else {
+      // replace the method
+      method_setImplementation(method, (IMP) swizzled_applicationSupportsSecureRestorableState);
+    }
   }
 }
