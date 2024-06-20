@@ -126,7 +126,8 @@ void set_macos_bundle_resources(lua_State *L);
 int main(int argc, char **argv) {
 #ifndef _WIN32
   signal(SIGPIPE, SIG_IGN);
-#elif __APPLE__
+#endif
+#ifdef __APPLE__
   enable_secure_restorable_state();
 #endif
 
