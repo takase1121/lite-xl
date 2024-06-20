@@ -1,3 +1,4 @@
+#include <stdio.h>
 #import <Foundation/Foundation.h>
 #include <lua.h>
 #include <objc/runtime.h>
@@ -24,6 +25,7 @@ void enable_momentum_scroll() {
  * https://github.com/libsdl-org/SDL/pull/6061/files#diff-11d3bf36cd6fea9d46b9a3ca1ff43e9ade6af1330239529efdd2d68174541b5d
  */
 BOOL swizzled_applicationSupportsSecureRestorableState(id __unused self, SEL __unused _cmd) {
+  puts("applicationSupportsSecureRestorableState called");
     return YES;
 }
 
@@ -32,5 +34,6 @@ void enable_secure_restorable_state() {
   @autoreleasepool {
     __auto_type method = class_getClassMethod(objc_getClass("SDLAppDelegate"), NSSelectorFromString(@"applicationSupportsSecureRestorableState"));
     method_setImplementation(method, (IMP) swizzled_applicationSupportsSecureRestorableState);
+    puts("SDLAppDelegate overridden");
   }
 }
