@@ -46,7 +46,7 @@ jobs:
       - name: Check Release
         id: check_release
         run: |
-          [[ -n `git describe --exact-match --match v[0-9]* HEAD --tags 2>&1` ]] \
+          git describe --exact-match --match v[0-9]* HEAD --tags >/dev/null 2>&1 \
             && REF=`git describe --exact-match --match v[0-9]* HEAD --tags` \
             || REF=continuous
           echo "ref=$REF" >> $GITHUB_OUTPUT
