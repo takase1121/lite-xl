@@ -46,8 +46,9 @@ jobs:
       - name: Check Release
         id: check_release
         run: |
-          REF=`git describe --exact-match --match v[0-9]* HEAD --tags`
-          [[ -z "$REF" ]] && REF="continuous"
+          [[ -n `git describe --exact-match --match v[0-9]* HEAD --tags` ]] \
+            && REF=`git describe --exact-match --match v[0-9]* HEAD --tags` \
+            || REF=continuous
           echo "ref=$REF" >> $GITHUB_OUTPUT
           echo "Build Version: $REF"
           if [[ "$REF" != "continuous" ]]; then
