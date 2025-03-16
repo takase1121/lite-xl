@@ -4,7 +4,7 @@ local Object = {}
 Object.__index = Object
 
 ---Can be overrided by child objects to implement a constructor.
-function Object:new() end
+function Object:new(...) end
 
 ---@return core.object
 function Object:extend()
