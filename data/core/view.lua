@@ -236,6 +236,7 @@ end
 ---@return boolean @Capture event
 function View:on_mouse_wheel(y, x)
   -- no-op
+  return false
 end
 
 ---Can be overriden to listen for scale change events to apply
