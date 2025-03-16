@@ -24,3 +24,7 @@ EXEFILE = "/path/to/lite"
 ---Path to the users home directory.
 ---@type string
 HOME = "/path/to/user/dir"
+
+---The path to the macOS App bundle resources directory.
+---@type string?
+MACOS_RESOURCES = nil
