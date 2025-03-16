@@ -27,6 +27,13 @@ renderer = {}
 ---@field public strikethrough boolean
 
 ---
+---Represent options passed to renderer.draw_text.
+---
+---@class renderer.textoptions
+---@field public tab_offset number X offset for drawing the tab character.
+
+
+---
 ---@class renderer.font
 renderer.font = {}
 
@@ -152,9 +159,10 @@ function renderer.draw_rect(x, y, width, height, color) end
 ---@param x number
 ---@param y number
 ---@param color renderer.color
+---@param options renderer.textoptions
 ---
 ---@return number x
-function renderer.draw_text(font, text, x, y, color) end
+function renderer.draw_text(font, text, x, y, color, options) end
 
 
 return renderer
