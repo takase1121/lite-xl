@@ -82,14 +82,14 @@ end
 ---@return number
 ---@overload fun(a: table, b: table, t: number): table
 function common.lerp(a, b, t)
-  if type(a) ~= "table" then
-    return a + (b - a) * t
+  if type(a) == "table" and type(b) == "table" then
+    local res = {}
+    for k, v in pairs(b) do
+      res[k] = common.lerp(a[k], v, t)
+    end
+    return res
   end
-  local res = {}
-  for k, v in pairs(b) do
-    res[k] = common.lerp(a[k], v, t)
-  end
-  return res
+  return a + (b - a) * t
 end
 
 
@@ -125,10 +125,10 @@ function common.color(str)
     a = tonumber(a, 16) or 0xff
   elseif str:match("rgba?%s*%([%d%s%.,]+%)") then
     local f = str:gmatch("[%d.]+")
-    r = (f() or 0)
-    g = (f() or 0)
-    b = (f() or 0)
-    a = (f() or 1) * 0xff
+    r = (tonumber(f()) or 0)
+    g = (tonumber(f()) or 0)
+    b = (tonumber(f()) or 0)
+    a = (tonumber(f()) or 1) * 0xff
   else
     error(string.format("bad color string '%s'", str))
   end
@@ -327,6 +327,7 @@ end
 ---@return number|nil end_index
 function common.match_pattern(text, pattern, ...)
   if type(pattern) == "string" then
+    ---@diagnostic disable-next-line: return-type-mismatch
     return text:find(pattern, ...)
   end
   for _, p in ipairs(pattern) do
@@ -608,10 +609,10 @@ function common.path_belongs_to(filename, path)
 end
 
 
----Checks whether a path is relative to another path.
----@param ref_dir string The path to check against.
+---Retrurns dir relative to ref_dir,
+---@param ref_dir string The parent path.
 ---@param dir string The input path.
----@return boolean
+---@return string
 function common.relative_path(ref_dir, dir)
   local drive_pattern = "^(%a):\\"
   local drive, ref_drive = dir:match(drive_pattern), ref_dir:match(drive_pattern)
@@ -684,7 +685,9 @@ function common.rm(path, recursively)
     end
   else
     local contents = system.list_dir(path)
-    if #contents > 0 and not recursively then
+    if not contents then
+      return false, "invalid path given", path
+    elseif #contents > 0 and not recursively then
       return false, "directory is not empty", path
     end
 
