@@ -21,7 +21,7 @@ function renwindow.create(x, y, width, height) end
 ---
 --- Get width and height of a window 
 ---
----@param renwindow
+---@param window renwindow
 ---
 ---@return number width
 ---@return number height
