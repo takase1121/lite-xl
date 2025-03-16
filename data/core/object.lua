@@ -23,6 +23,7 @@ end
 ---Check if the object is strictly of the given type.
 ---@param T any
 ---@return boolean
+---@overload fun(this:any, that:any): boolean
 function Object:is(T)
   return getmetatable(self) == T
 end
@@ -30,6 +31,7 @@ end
 ---Check if the parameter is strictly of the object type.
 ---@param T any
 ---@return boolean
+---@overload fun(this:any, that:any): boolean
 function Object:is_class_of(T)
   return getmetatable(T) == self
 end
@@ -37,6 +39,7 @@ end
 ---Check if the object inherits from the given type.
 ---@param T any
 ---@return boolean
+---@overload fun(this:any, that:any): boolean
 function Object:extends(T)
   local mt = getmetatable(self)
   while mt do
@@ -51,6 +54,7 @@ end
 ---Check if the parameter inherits from the object.
 ---@param T any
 ---@return boolean
+---@overload fun(this:any, that:any): boolean
 function Object:is_extended_by(T)
   local mt = getmetatable(T)
   while mt do
