@@ -189,32 +189,42 @@ jobs:
   build_windows:
     name: Windows (x86_64) (MSYS)
     runs-on: windows-2019
+    needs: [version]
     defaults: 
       run:
-        shell: msys2 {0}
-    needs: [version]
+        shell: bash {0}
+    env: { CC: "zig cc" }
     steps:
-      - uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          install: >-
-            git
-            zip
-            patch
-          pacboy: >-
-            gcc:p
-            meson:p
-            ca-certificates:p
-            ninja:p
-            pkg-config:p
+      # - uses: msys2/setup-msys2@v2
+      #   with:
+      #     msystem: MINGW64
+      #     install: >-
+      #       git
+      #       zip
+      #       patch
+      #     pacboy: >-
+      #       gcc:p
+      #       meson:p
+      #       ca-certificates:p
+      #       ninja:p
+      #       pkg-config:p
 
       - uses: actions/checkout@v4
+
+      - name: Setup Zig CC
+        uses: mlugg/setup-zig@v1
+        with:
+          version: 0.14.0
         
       - name: Build
         run: bash scripts/build.sh --addons --debug --forcefallback --portable -b build
 
       - name: Package Windows (Portable)
-        run: cd build && zip -r ../lite-xl-${{ needs.version.outputs.ref }}-x86_64-windows-portable.zip lite-xl && cd ..
+        shell: powershell {0}
+        run: |
+          cd build
+          Compress-Archive -Path lite-xl -DestinationPath "../lite-xl-${{ needs.version.outputs.ref }}-x86_64-windows.zip"
+          cd ..
         
       - name: Package Windows (InnoSetup)
         run: bash scripts/package-innosetup.sh --debug --version ${{ needs.version.outputs.ref }} -b build
