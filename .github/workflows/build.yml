@@ -215,6 +215,13 @@ jobs:
         uses: mlugg/setup-zig@v1
         with:
           version: 0.14.0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+
+      - name: Install meson and ninja
+        run: pip install meson ninja
         
       - name: Build
         run: bash scripts/build.sh --addons --debug --forcefallback --portable -b build
