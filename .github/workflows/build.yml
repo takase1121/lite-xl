@@ -215,6 +215,7 @@ jobs:
         uses: mlugg/setup-zig@v1
         with:
           version: 0.14.0
+          use-cache: false
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -228,7 +229,7 @@ jobs:
 
       - name: Package Windows (Portable)
         shell: powershell {0}
-        run: Compress-Archive -Path lite-xl/* -DestinationPath "lite-xl-${{ needs.version.outputs.ref }}-x86_64-windows.zip"
+        run: Compress-Archive -Path lite-xl\* -DestinationPath "lite-xl-${{ needs.version.outputs.ref }}-x86_64-windows.zip"
         
       - name: Package Windows (InnoSetup)
         run: bash scripts/package-innosetup.sh --debug --version ${{ needs.version.outputs.ref }} -b build
