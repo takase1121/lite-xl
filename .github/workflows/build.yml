@@ -212,7 +212,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup Zig CC
-        uses: mlugg/setup-zig@v1
+        uses: takase1121/setup-zig@v1
         with:
           version: 0.14.0
 
