@@ -227,8 +227,7 @@ jobs:
         run: bash scripts/build.sh --addons --debug --forcefallback --portable -b build
 
       - name: Package Windows (Portable)
-        shell: powershell {0}
-        run: Compress-Archive -Path build/lite-xl/* -DestinationPath "lite-xl-${{ needs.version.outputs.ref }}-x86_64-windows.zip"
+        run: cd build && 7z a -mx=9 "lite-xl-${{ needs.version.outputs.ref }}-x86_64-windows.zip" lite-xl/ && cd ..
         
       - name: Package Windows (InnoSetup)
         run: bash scripts/package-innosetup.sh --debug --version ${{ needs.version.outputs.ref }} -b build
