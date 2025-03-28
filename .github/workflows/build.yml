@@ -223,10 +223,9 @@ jobs:
               -and (-not $env:RUNNER_TOOL_CACHE)) {
             exit
           }
-          $newPath = $env:RUNNER_TOOL_CACHE -replace 'C:|c:', 'D:'
-          Remove-Item -LiteralPath $env:RUNNER_TOOL_CACHE -Recurse -Force
-          New-Item -ItemType Directory -Path $newPath -Force
-          New-Item -ItemType Junction -Path $env:RUNNER_TOOL_CACHE -Value $newPath -Force
+          $newPath = "$env:RUNNER_TOOL_CACHE\zig" -replace 'C:|c:', 'D:'
+          New-Item -ItemType Directory -Path "$newPath" -Force
+          New-Item -ItemType Junction -Path "$env:RUNNER_TOOL_CACHE\zig" -Value $newPath -Force
 
       - name: Setup Zig CC
         uses: mlugg/setup-zig@v1
