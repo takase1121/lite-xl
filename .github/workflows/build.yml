@@ -193,7 +193,9 @@ jobs:
     defaults:
       run:
         shell: bash {0}
-    env: { CC: "zig cc" }
+    env:
+      CC: "zig cc"
+      ZIG_LOCAL_CACHE_DIR: "D:/tmp/zig-cache"
     steps:
       # - uses: msys2/setup-msys2@v2
       #   with:
