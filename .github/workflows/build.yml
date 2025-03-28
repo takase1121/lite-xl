@@ -218,8 +218,8 @@ jobs:
       - name: Move toolcache directory to D drive
         shell: powershell
         run: |
-          if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted'
-              -and $env:AGENT_ISSELFHOSTED -ne '1'
+          if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted' `
+              -and $env:AGENT_ISSELFHOSTED -ne '1' `
               -and (-not $env:RUNNER_TOOL_CACHE)) {
             exit
           }
