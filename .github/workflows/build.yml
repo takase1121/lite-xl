@@ -195,7 +195,8 @@ jobs:
         shell: bash {0}
     env:
       CC: "zig cc"
-      ZIG_LOCAL_CACHE_DIR: "D:/tmp/zig-cache"
+      ZIG_LOCAL_CACHE_DIR: "D:/tmp/zig-cache/local"
+      ZIG_GLOBAL_CACHE_DIR: "D:/tmp/zig-cache/global"
     steps:
       # - uses: msys2/setup-msys2@v2
       #   with:
