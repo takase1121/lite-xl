@@ -46,12 +46,15 @@ show_help() {
 }
 
 main() {
+  local sdl_version="${SDL_VERSION:-3.2.8}"
   local platform="$(get_platform_name)"
   local arch="$(get_platform_arch)"
   local build_dir
   local plugins="-Dbundle_plugins="
   local prefix=/
   local build_type="release"
+  local cmake_build_type="release"
+  local pkg_config_name=
   local force_fallback
   local bundle="-Dbundle=false"
   local portable="-Dportable=false"
@@ -197,6 +200,7 @@ main() {
   elif [[ "$build_dir" == "" ]]; then
     build_dir="$(get_default_build_dir)"
   fi
+  build_dir="$(readlink -f "$build_dir")"
 
   # arch and platform specific stuff
   if [[ "$platform" == "macos" ]]; then
@@ -228,6 +232,66 @@ main() {
     export PATH="$(dirname "$lpm_path"):$PATH"
   fi
 
+  if [[ -n "$force_fallback" ]]; then
+    if [[ -n "$cross_file" ]]; then
+      echo "WARNING: --cross-file is not supported by CMake; Provide the necessary CMake environment variables yourself."
+    fi
+    # temporarily download SDL3 and build it
+    mkdir -p "$build_dir/SDL3-$sdl_version/build"
+    cd "$build_dir"
+    if [[ ! -f "SDL3-$sdl_version.tar.gz" ]]; then
+      curl --insecure -L -o "SDL3-$sdl_version.tar.gz" "https://github.com/libsdl-org/SDL/releases/download/release-$sdl_version/SDL3-$sdl_version.tar.gz"
+    fi
+    if [[ ! -f "SDL3-$sdl_version/CMakeLists.txt" ]]; then
+      tar -xzf "SDL3-$sdl_version.tar.gz"
+    fi
+    cd "SDL3-$sdl_version/build"
+    # map the build types we can actually use with CMake
+    case "$build_type" in
+      "debugoptimized")
+        cmake_build_type="RelWithDebInfo"
+        echo "WARNING: using RelWithDebInfo for debugoptimized; THEY ARE NOT THE SAME!"
+        ;;
+      "debug"|"release")
+        cmake_build_type="$build_type"
+        ;;
+      *)
+        echo "WARNING: unsupported build type; Release will be used"
+        ;;
+    esac
+    cmake -GNinja .. -DCMAKE_BUILD_TYPE="$cmake_build_type" \
+      -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DSDL_INSTALL=ON -DSDL_INSTALL_DOCS=OFF -DSDL_DEPS_SHARED=ON \
+      -DSDL_AVX=OFF -DSDL_AVX2=OFF -DSDL_AVX512F=OFF -DSDL_SSE3=OFF -DSDL_SSE4_1=OFF -DSDL_SSE4_2=OFF \
+      -DSDL_DBUS=ON -DSDL_IBUS=ON -DSDL_AUDIO=OFF -DSDL_GPU=OFF -DSDL_RPATH=OFF -DSDL_PIPEWIRE=OFF \
+      -DSDL_CAMERA=OFF -DSDL_JOYSTICK=OFF -DSDL_HAPTIC=OFF -DSDL_HIDAPI=OFF -DSDL_DIALOG=OFF \
+      -DSDL_POWER=OFF -DSDL_SENSOR=OFF -DSDL_VULKAN=OFF -DSDL_LIBUDEV=OFF -DSDL_SHARED=OFF -DSDL_STATIC=ON \
+      -DSDL_X11=ON -DSDL_WAYLAND=ON -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF -DSDL_VENDOR_INFO=lite-xl \
+      -DCMAKE_INSTALL_PREFIX="$build_dir/prefix"
+    ninja install
+    # find pkgconfig
+    for n in "$PKG_CONFIG" "pkg-config" "pkgconf"; do
+      if command -v "$n" >/dev/null 2>&1; then
+        pkg_config_name="$n"
+        break
+      fi
+    done
+    # https://github.com/mesonbuild/meson/blob/9150c2a68a9d432714db04614f416358a48f7e73/mesonbuild/dependencies/pkgconfig.py#L239
+    if [[ -n "$pkg_config_name" ]] && [[ "$($pkg_config_name --help)" =~ "Pure-Perl" ]] ; then
+      echo "WARNING: Found pkg-config but it is Strawberry and thus broken. Ignoring..."
+      pkg_config_name=""
+    fi
+    if [[ -n "$pkg_config_name" ]]; then
+      [[ "$(get_platform_name)" = "windows" ]] \
+        && export PKG_CONFIG_PATH="${PKG_CONFIG_PATH:+"$PKG_CONFIG_PATH;"}$build_dir/prefix/lib/pkgconfig" \
+        || export PKG_CONFIG_PATH="${PKG_CONFIG_PATH:+"$PKG_CONFIG_PATH:"}$build_dir/prefix/lib/pkgconfig"
+    else
+      echo "WARNING: pkg-config not found; exporting known CFLAGS and CXXFLAGS; YOU ARE ON YOUR OWN!"
+      export CFLAGS="-I$build_dir/prefix/include"
+      export LDFLAGS="-L$build_dir/prefix/lib -lSDL3 -pthread -lm"
+    fi
+    cd ../../..
+  fi
+  
   CFLAGS=$CFLAGS LDFLAGS=$LDFLAGS meson setup \
     "${build_dir}" \
     --buildtype "$build_type" \
