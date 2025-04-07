@@ -200,7 +200,7 @@ main() {
   elif [[ "$build_dir" == "" ]]; then
     build_dir="$(get_default_build_dir)"
   fi
-  build_dir="$(readlink -f "$build_dir")"
+  build_dir="$(realpath "$build_dir")"
 
   # arch and platform specific stuff
   if [[ "$platform" == "macos" ]]; then
