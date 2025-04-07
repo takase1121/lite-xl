@@ -200,7 +200,6 @@ main() {
   elif [[ "$build_dir" == "" ]]; then
     build_dir="$(get_default_build_dir)"
   fi
-  build_dir="$(realpath "$build_dir")"
 
   # arch and platform specific stuff
   if [[ "$platform" == "macos" ]]; then
@@ -239,6 +238,7 @@ main() {
     # temporarily download SDL3 and build it
     mkdir -p "$build_dir/SDL3-$sdl_version/build"
     cd "$build_dir"
+    build_dir="$(pwd -P)"
     if [[ ! -f "SDL3-$sdl_version.tar.gz" ]]; then
       curl --insecure -L -o "SDL3-$sdl_version.tar.gz" "https://github.com/libsdl-org/SDL/releases/download/release-$sdl_version/SDL3-$sdl_version.tar.gz"
     fi
