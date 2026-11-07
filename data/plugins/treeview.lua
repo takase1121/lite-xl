@@ -760,8 +760,11 @@ command.add(
       submit = function(filename)
         local doc_filename = item.dir_name .. PATHSEP .. filename
         core.log(doc_filename)
-        local file = io.open(doc_filename, "a+")
-        file:write("")
+        local file, err = io.open(doc_filename, "a+")
+        if not file then
+          core.error("Error: unable to create a new file in \"%s\": %s", doc_filename, err)
+          return
+        end
         file:close()
         core.root_view:open_doc(core.open_doc(doc_filename))
         core.log("Created %s", doc_filename)
