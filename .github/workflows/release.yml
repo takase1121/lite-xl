@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Fetch Version
         id: tag
@@ -36,7 +36,7 @@ jobs:
           fi
 
       - name: Update Tag
-        uses: richardsimko/update-tag@v1
+        uses: richardsimko/update-tag@v3
         with:
           tag_name: ${{ steps.tag.outputs.version }}
         env:
@@ -70,12 +70,12 @@ jobs:
           echo "CCACHE_DIR=$PWD/.ccache" >> $GITHUB_ENV
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # disabled because this will break our own Python install
       - name: Python Setup
         if: false
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 
@@ -116,7 +116,7 @@ jobs:
             bash scripts/appimage.sh --debug --nobuild --addons --version ${INSTALL_REF}
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Linux Artifacts
           path: |
@@ -131,8 +131,8 @@ jobs:
     strategy:
       matrix:
         config:
-          - { arch: x86_64, runner: macos-13 } # macos-13 uses x86_64
-          - { arch: arm64, runner: macos-14 } # macos-14 / latest uses M1
+          - { arch: x86_64, runner: macos-15-intel } # macos-15-intel uses x86_64
+          - { arch: arm64, runner: macos-15 } # macos-15 uses M1
 
     runs-on: ${{ matrix.config.runner }}
     env:
@@ -155,10 +155,10 @@ jobs:
           echo "INSTALL_NAME_ADDONS=lite-xl-${{ needs.release.outputs.version }}-addons-macos-${{ matrix.config.arch }}" >> "$GITHUB_ENV"
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Python Setup
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 
@@ -178,7 +178,7 @@ jobs:
           bash scripts/package.sh --version ${INSTALL_REF} --debug --addons --dmg --release
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: macOS DMG Images (${{ matrix.config.arch }})
           path: |
@@ -188,7 +188,7 @@ jobs:
   build_macos_universal:
     name: macOS (Universal)
     needs: [release, build_macos]
-    runs-on: macos-14
+    runs-on: macos-15
 
     steps:
       - name: System Information
@@ -204,10 +204,10 @@ jobs:
           echo "INSTALL_BASE=lite-xl-${{ needs.release.outputs.version }}-macos" >> "$GITHUB_ENV"
           echo "INSTALL_BASE_ADDONS=lite-xl-${{ needs.release.outputs.version }}-addons-macos" >> "$GITHUB_ENV"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Download Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         id: download
         with:
           pattern: macOS DMG Images *
@@ -215,7 +215,7 @@ jobs:
           path: dmgs-original
 
       - name: Python Setup
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 
@@ -235,7 +235,7 @@ jobs:
           bash scripts/make-universal-binaries.sh dmgs-addons "$INSTALL_BASE_ADDONS-universal"
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: macOS DMG Images (Universal)
           path: |
@@ -245,7 +245,7 @@ jobs:
   build_windows_msys2:
     name: Windows
     needs: release
-    runs-on: windows-2019
+    runs-on: windows-2022
     strategy:
       matrix:
         config:
@@ -257,7 +257,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
@@ -312,7 +312,7 @@ jobs:
         run: bash scripts/innosetup/innosetup.sh --debug --version ${INSTALL_REF} --addons
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Windows Builds (${{ matrix.config.msystem }})
           path: |
@@ -331,7 +331,7 @@ jobs:
 
     steps:
       - name: Download Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           merge-multiple: true
 

@@ -34,12 +34,12 @@ jobs:
           echo "INSTALL_NAME=lite-xl-${GITHUB_REF##*/}-linux-$(uname -m)-portable" >> "$GITHUB_ENV"
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # disabled because this will break our own Python install
       - name: Python Setup
         if: false
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 
@@ -66,7 +66,7 @@ jobs:
         run: bash scripts/package.sh --version ${INSTALL_REF} --debug --binary
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: ${{ matrix.config.cc == 'gcc' }}
         with:
           name: Linux Artifacts
@@ -78,8 +78,8 @@ jobs:
     strategy:
       matrix:
         config:
-          - { arch: x86_64, runner: macos-13 } # macos-13 uses x86_64
-          - { arch: arm64, runner: macos-14 } # macos-14 / latest uses M1
+          - { arch: x86_64, runner: macos-15-intel } # macos-15-intel uses x86_64
+          - { arch: arm64, runner: macos-15 } # macos-15 uses M1
 
     runs-on: ${{ matrix.config.runner }}
     env:
@@ -101,10 +101,10 @@ jobs:
           echo "INSTALL_NAME=lite-xl-${GITHUB_REF##*/}-macos-${{ matrix.config.arch }}" >> "$GITHUB_ENV"
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Python Setup
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 
@@ -123,7 +123,7 @@ jobs:
         run: bash scripts/package.sh --version ${INSTALL_REF} --debug --dmg
 
       - name: Upload DMG Image
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: macOS DMG Images (${{ matrix.config.arch }})
           path: ${{ env.INSTALL_NAME }}.dmg
@@ -131,7 +131,7 @@ jobs:
 
   build_macos_universal:
     name: macOS (Universal)
-    runs-on: macos-14
+    runs-on: macos-15
     needs: build_macos
 
     steps:
@@ -148,7 +148,7 @@ jobs:
           echo "INSTALL_NAME=lite-xl-${GITHUB_REF##*/}-macos-universal" >> "$GITHUB_ENV"
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 
@@ -156,10 +156,10 @@ jobs:
         run: pip install dmgbuild
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         id: download
         with:
           pattern: macOS DMG Images *
@@ -172,7 +172,7 @@ jobs:
           bash scripts/make-universal-binaries.sh ${{ steps.download.outputs.download-path }} "${INSTALL_NAME}"
 
       - name: Upload DMG Image
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: macOS DMG Images (Universal)
           path: ${{ env.INSTALL_NAME }}.dmg
@@ -180,7 +180,7 @@ jobs:
 
   build_windows_msys2:
     name: Windows
-    runs-on: windows-2019
+    runs-on: windows-2022
     strategy:
       matrix:
         config:
@@ -192,7 +192,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
@@ -234,7 +234,7 @@ jobs:
         run: bash scripts/package.sh --version ${INSTALL_REF} --debug --binary
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Windows Artifacts (${{ matrix.config.msystem }})
           path: ${{ env.INSTALL_NAME }}.zip
@@ -242,7 +242,7 @@ jobs:
 
   build_windows_msvc:
     name: Windows (MSVC)
-    runs-on: windows-2019
+    runs-on: windows-2022
     strategy:
       matrix:
         arch:
@@ -251,7 +251,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup MSVC
         id: msvc-dev-cmd
@@ -260,7 +260,7 @@ jobs:
           arch: ${{ matrix.arch.target }}
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 
@@ -268,7 +268,7 @@ jobs:
         run: pip install --no-cache-dir meson ninja
 
       - name: Export GitHub Actions cache environment variables
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
@@ -293,7 +293,7 @@ jobs:
           7z a -mx=9 "$env:INSTALL_NAME.zip" lite-xl
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Windows Artifacts (MSVC ${{ matrix.arch.target }})
           path: ${{ env.INSTALL_NAME }}.zip
