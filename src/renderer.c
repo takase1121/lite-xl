@@ -18,6 +18,7 @@ static size_t window_count = 0;
 // draw_rect_surface is used as a 1x1 surface to simplify ren_draw_rect with blending
 static SDL_Surface *draw_rect_surface = NULL;
 static const RenBackend *backend = &renbackend_soft;
+static const RenBackend *const backends[] = { &renbackend_soft };
 
 double ren_draw_text(RenSurface *rs, RenFont **fonts, const char *text, size_t len, float x, int y, RenColor color, RenTab tab) {
   const int surface_scale = rs->scale;
@@ -213,6 +214,24 @@ int video_init(void) {
     ren_inited = 1;
   }
   return 0;
+}
+
+SDL_Surface *ren_atlas_create(int w, int h, SDL_PixelFormat format) {
+  return backend->stores_atlas_pixels ? SDL_CreateSurface(w, h, format) : SDL_CreateSurfaceFrom(w, h, format, NULL, 0);
+}
+
+void ren_atlas_upload(SDL_Surface *atlas, int y, int rows, const uint8_t *src, int pitch, int row_bytes) {
+  backend->atlas_upload(atlas, y, rows, src, pitch, row_bytes);
+}
+
+void ren_atlas_destroyed(SDL_Surface *atlas) {
+  for (size_t i = 0; i < sizeof(backends) / sizeof(*backends); i++) {
+    if (backends[i]->atlas_destroyed) backends[i]->atlas_destroyed(atlas);
+  }
+}
+
+int ren_max_atlas_size(void) {
+  return backend->max_atlas_size ? backend->max_atlas_size() : 0;
 }
 
 SDL_WindowFlags ren_window_flags(void) {

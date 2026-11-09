@@ -26,6 +26,12 @@ unsigned char font_group_get_style(RenFont **fonts);
 bool font_group_lookup(RenFont **fonts, unsigned int codepoint, int subpixel_idx, FontGlyph *out);
 float font_get_xadvance(RenFont *font, unsigned int codepoint, float xadvance, double curr_x, RenTab tab);
 
+// implemented by the renderer, forwarding to the backends
+SDL_Surface *ren_atlas_create(int w, int h, SDL_PixelFormat format);
+void ren_atlas_upload(SDL_Surface *atlas, int y, int rows, const uint8_t *src, int pitch, int row_bytes);
+void ren_atlas_destroyed(SDL_Surface *atlas);
+int ren_max_atlas_size(void);
+
 // https://en.wikipedia.org/wiki/Whitespace_character
 static inline int is_whitespace(unsigned int codepoint) {
   switch (codepoint) {

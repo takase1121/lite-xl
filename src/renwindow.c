@@ -159,6 +159,12 @@ static void soft_set_clip(RenWindow *ren, RenRect rect) {
   SDL_SetSurfaceClipRect(rs.surface, &(SDL_Rect){.x = sr.x, .y = sr.y, .w = sr.width, .h = sr.height});
 }
 
+static void soft_atlas_upload(SDL_Surface *atlas, int y, int rows, const uint8_t *src, int pitch, int row_bytes) {
+  for (int line = 0; line < rows; line++) {
+    SDL_memcpy((uint8_t*) atlas->pixels + (size_t) atlas->pitch * (y + line), src + (size_t) pitch * line, row_bytes);
+  }
+}
+
 const RenBackend renbackend_soft = {
   .name = "soft",
   .available = soft_available,
@@ -172,4 +178,6 @@ const RenBackend renbackend_soft = {
   .get_surface = soft_get_surface,
   .draw_rect = soft_draw_rect,
   .draw_glyph = soft_draw_glyph,
+  .stores_atlas_pixels = true,
+  .atlas_upload = soft_atlas_upload,
 };

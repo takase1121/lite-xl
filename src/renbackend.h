@@ -25,6 +25,14 @@ typedef struct RenBackend {
   RenSurface (*get_surface)(RenWindow *ren);
   void (*draw_rect)(RenSurface *rs, RenRect rect, RenColor color);
   void (*draw_glyph)(RenSurface *rs, const RenGlyph *glyph);
+  /* Glyph atlases are SDL surfaces packed by the font cache. Backends that keep the
+  ** pixels elsewhere leave stores_atlas_pixels false and get a pixel-less surface. */
+  bool stores_atlas_pixels;
+  /* copies `rows` rows of `row_bytes` bytes at `src` into the atlas starting at row y */
+  void (*atlas_upload)(SDL_Surface *atlas, int y, int rows, const uint8_t *src, int pitch, int row_bytes);
+  /* optional */
+  void (*atlas_destroyed)(SDL_Surface *atlas);
+  int (*max_atlas_size)(void);
 } RenBackend;
 
 extern const RenBackend renbackend_soft;
