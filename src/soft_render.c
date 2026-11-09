@@ -254,7 +254,7 @@ static void soft_atlas_upload(RenAtlas *atlas, int y, int rows, const uint8_t *s
 
 const RenBackend renbackend_soft = {
   .name = "soft",
-  .full_redraw = false,
+  .flags = 0,
   .available = soft_available,
   .window_flags = soft_window_flags,
   .init_window = soft_init_window,
@@ -262,7 +262,7 @@ const RenBackend renbackend_soft = {
   .resize = soft_resize,
   .get_size = soft_get_size,
   .begin_frame = soft_begin_frame,
-  .present = soft_present,
+  .end_frame = soft_present,
   .set_clip = soft_set_clip,
   .get_surface = soft_get_surface,
   .draw_rect = soft_draw_rect,

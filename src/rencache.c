@@ -289,7 +289,7 @@ static void replay_commands(RenWindow *window_renderer, RenSurface *rs, RenRect 
 
 void rencache_end_frame(RenWindow *window_renderer) {
   window_renderer->backend->begin_frame(window_renderer);
-  if (window_renderer->backend->full_redraw) {
+  if (window_renderer->backend->flags & BACKEND_FLAG_FULL_REDRAW) {
     /* no dirty-cell tracking, the whole frame is drawn each time */
     RenSurface rs = renwin_get_surface(window_renderer);
     replay_commands(window_renderer, &rs, screen_rect);

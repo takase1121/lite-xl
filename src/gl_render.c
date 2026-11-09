@@ -425,7 +425,7 @@ static void draw_glyph(RenSurface *rs, const RenGlyph *g) {
 
 const RenBackend renbackend_gl = {
   .name = "gl",
-  .full_redraw = true,
+  .flags = BACKEND_FLAG_FULL_REDRAW,
   .available = available,
   .window_flags = window_flags,
   .init_window = init_window,
@@ -433,7 +433,7 @@ const RenBackend renbackend_gl = {
   .resize = resize,
   .get_size = get_size,
   .begin_frame = begin_frame,
-  .present = present,
+  .end_frame = present,
   .set_clip = set_clip,
   .get_surface = get_surface,
   .draw_rect = draw_rect,
