@@ -211,9 +211,23 @@ int video_init(void) {
     SDL_SetHint("SDL_BORDERLESS_RESIZABLE_STYLE", "1");
     SDL_SetHint("SDL_MOUSE_DOUBLE_CLICK_RADIUS", "4");
     SDL_SetHint(SDL_HINT_RENDER_DRIVER, "software");
+    if (SDL_getenv("LITE_GL") && !ren_set_backend("gl"))
+      fprintf(stderr, "renderer: LITE_GL set but the GL backend is not built in (no glesv2 or LITE_USE_SDL_RENDERER)\n");
+    fprintf(stderr, "renderer: %s backend\n", backend->name);
     ren_inited = 1;
   }
   return 0;
+}
+
+// selects the backend used by windows created from now on
+bool ren_set_backend(const char *name) {
+  for (size_t i = 0; i < sizeof(backends) / sizeof(*backends); i++) {
+    if (strcmp(backends[i]->name, name) == 0 && backends[i]->available()) {
+      backend = backends[i];
+      return true;
+    }
+  }
+  return false;
 }
 
 SDL_Surface *ren_atlas_create(int w, int h, SDL_PixelFormat format) {
