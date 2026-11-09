@@ -13,11 +13,15 @@ typedef struct {
 
 typedef enum { BACKEND_FLAG_FULL_REDRAW = 1 } ERenBackendFlag;
 
+/* properties handed to available() by ren_set_backend */
+/* string: GL profiles to try, in order. "gles", "gl" or "gles,gl"; a single entry has no fallback */
+#define RENBACKEND_PROP_GL_BACKEND "gl_backend"
+
 /* A renderer backend. Every window keeps the backend it was created with. */
 typedef struct RenBackend {
   const char *name;
   uint32_t flags;
-  bool (*available)(void);
+  bool (*available)(SDL_PropertiesID props);
   SDL_WindowFlags (*window_flags)(void);
   bool (*init_window)(RenWindow *ren);
   void (*free_window)(RenWindow *ren);

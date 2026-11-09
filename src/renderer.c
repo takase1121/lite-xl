@@ -123,8 +123,14 @@ int video_init(void) {
     SDL_SetHint("SDL_BORDERLESS_RESIZABLE_STYLE", "1");
     SDL_SetHint("SDL_MOUSE_DOUBLE_CLICK_RADIUS", "4");
     SDL_SetHint(SDL_HINT_RENDER_DRIVER, "software");
-    if (SDL_getenv("LITE_GL") && !ren_set_backend("gl"))
-      fprintf(stderr, "renderer: LITE_GL set but the GL backend is not built in (no usable OpenGL or GLES2 context)\n");
+    const char *gl_env = SDL_getenv("LITE_GL");
+    if (gl_env) {
+      SDL_PropertiesID props = SDL_CreateProperties();
+      if (*gl_env) SDL_SetStringProperty(props, RENBACKEND_PROP_GL_BACKEND, gl_env);
+      if (!ren_set_backend("gl", props))
+        fprintf(stderr, "renderer: LITE_GL set but no usable OpenGL or GLES2 context was found\n");
+      SDL_DestroyProperties(props);
+    }
     fprintf(stderr, "renderer: %s backend\n", backend->name);
     ren_inited = 1;
   }
@@ -132,9 +138,9 @@ int video_init(void) {
 }
 
 // selects the backend used by windows created from now on
-bool ren_set_backend(const char *name) {
+bool ren_set_backend(const char *name, SDL_PropertiesID props) {
   for (size_t i = 0; i < sizeof(backends) / sizeof(*backends); i++) {
-    if (strcmp(backends[i]->name, name) == 0 && backends[i]->available()) {
+    if (strcmp(backends[i]->name, name) == 0 && backends[i]->available(props)) {
       backend = backends[i];
       return true;
     }

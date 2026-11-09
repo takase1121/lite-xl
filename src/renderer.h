@@ -53,7 +53,7 @@ void ren_draw_rect(RenSurface *rs, RenRect rect, RenColor color);
 
 int video_init(void);
 SDL_WindowFlags ren_window_flags(void);
-bool ren_set_backend(const char *name);
+bool ren_set_backend(const char *name, SDL_PropertiesID props);
 int ren_init(void);
 void ren_free(void);
 RenWindow* ren_create(SDL_Window *win);

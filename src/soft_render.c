@@ -36,7 +36,8 @@ static RenRect scaled_rect(const RenRect rect, const int scale) {
   return (RenRect) {rect.x * scale, rect.y * scale, rect.width * scale, rect.height * scale};
 }
 
-static bool soft_available(void) {
+static bool soft_available(SDL_PropertiesID props) {
+  (void) props;
   return true;
 }
 

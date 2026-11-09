@@ -468,16 +468,29 @@ static bool probe(bool es) {
 
 /* tries both profiles on a throwaway window; the window itself cannot be retried
 ** because some platforms fix the pixel format when the window is created */
-static bool available(void) {
+static bool available(SDL_PropertiesID props) {
   static int state;
   if (!state) {
+    bool order[2];
+    int count = 0;
+    const char *list = SDL_GetStringProperty(props, RENBACKEND_PROP_GL_BACKEND, NULL);
+    while (list && *list && count < 2) {
+      const char *end = SDL_strchr(list, ',');
+      size_t len = end ? (size_t) (end - list) : SDL_strlen(list);
+      if (len == 4 && !SDL_strncmp(list, "gles", 4)) order[count++] = true;
+      else if (len == 2 && !SDL_strncmp(list, "gl", 2)) order[count++] = false;
+      list += len + (end != NULL);
+    }
+    if (!count) {
 #if defined(_WIN32) || defined(__APPLE__)
-    const bool order[2] = { false, true };
+      order[0] = false; order[1] = true;
 #else
-    const bool order[2] = { true, false };
+      order[0] = true; order[1] = false;
 #endif
+      count = 2;
+    }
     state = -1;
-    for (int i = 0; i < 2 && state < 0; i++) {
+    for (int i = 0; i < count && state < 0; i++) {
       if (probe(order[i])) {
         use_es = order[i];
         state = 1;
