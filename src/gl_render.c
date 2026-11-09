@@ -587,10 +587,10 @@ static void draw_rect(RenSurface *rs, RenRect r, RenColor color) {
   push_quad(gl, gl->white_tex, false, r.x, r.y, r.x + r.width, r.y + r.height, 0, 0, 0, 0, color);
 }
 
-static void draw_glyph(RenSurface *rs, const RenGlyph *g) {
+static void draw_glyph(RenSurface *rs, const FontGlyph *g, int x, int y, RenColor color) {
   const float tw = g->atlas->w, th = g->atlas->h;
-  push_quad(rs->data, atlas_texture(g->atlas), g->lcd, g->dx, g->dy, g->dx + g->w, g->dy + g->h,
-            0, g->sy / th, g->w / tw, (g->sy + g->h) / th, g->color);
+  push_quad(rs->data, atlas_texture(g->atlas), g->lcd, x, y, x + g->w, y + g->h,
+            0, g->sy / th, g->w / tw, (g->sy + g->h) / th, color);
 }
 
 const RenBackend renbackend_gl = {

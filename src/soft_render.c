@@ -146,12 +146,12 @@ static void soft_set_clip(RenWindow *ren, RenRect rect) {
   SDL_SetSurfaceClipRect(rs.surface, &(SDL_Rect){.x = sr.x, .y = sr.y, .w = sr.width, .h = sr.height});
 }
 
-static void soft_draw_glyph(RenSurface *rs, const RenGlyph *g) {
+static void soft_draw_glyph(RenSurface *rs, const FontGlyph *g, int x, int y, RenColor color) {
   SDL_Surface *surface = rs->surface;
   SDL_Rect clip;
   SDL_GetSurfaceClipRect(surface, &clip);
   int clip_end_x = clip.x + clip.w, clip_end_y = clip.y + clip.h;
-  int start_x = g->dx;
+  int start_x = x;
   if (start_x + g->w < clip.x || start_x >= clip_end_x)
     return;
 
@@ -160,7 +160,7 @@ static void soft_draw_glyph(RenSurface *rs, const RenGlyph *g) {
   uint8_t *source_pixels = atlas->pixels;
   int glyph_end = g->w, glyph_start = 0;
   for (int line = 0; line < g->h; ++line) {
-    int target_y = line + g->dy;
+    int target_y = line + y;
     if (target_y < clip.y)
       continue;
     if (target_y >= clip_end_y)
@@ -199,9 +199,9 @@ static void soft_draw_glyph(RenSurface *rs, const RenGlyph *g) {
       src.b = *(source_pixel++);
       src.a = 0xFF;
 
-      unsigned r = (g->color.r * src.r * g->color.a + dst.r * (65025 - src.r * g->color.a) + 32767) / 65025;
-      unsigned gr = (g->color.g * src.g * g->color.a + dst.g * (65025 - src.g * g->color.a) + 32767) / 65025;
-      unsigned b = (g->color.b * src.b * g->color.a + dst.b * (65025 - src.b * g->color.a) + 32767) / 65025;
+      unsigned r = (color.r * src.r * color.a + dst.r * (65025 - src.r * color.a) + 32767) / 65025;
+      unsigned gr = (color.g * src.g * color.a + dst.g * (65025 - src.g * color.a) + 32767) / 65025;
+      unsigned b = (color.b * src.b * color.a + dst.b * (65025 - src.b * color.a) + 32767) / 65025;
       // the standard way of doing this would be SDL_GetRGBA, but that introduces a performance regression. needs to be investigated
       *destination_pixel++ = (unsigned int) dst.a << surface_format->Ashift | r << surface_format->Rshift | gr << surface_format->Gshift | b << surface_format->Bshift;
     }

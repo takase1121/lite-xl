@@ -42,13 +42,7 @@ double ren_draw_text(RenSurface *rs, RenFont **fonts, const char *text, size_t l
     if (!glyph.atlas && !is_whitespace(codepoint))
       ren_draw_rect(rs, (RenRect){ start_x + 1, y, glyph.space_advance - 1, ren_font_group_get_height(fonts) }, color);
     if (!is_whitespace(codepoint) && glyph.atlas && color.a > 0) {
-      rs->backend->draw_glyph(rs, &(RenGlyph){
-        .atlas = glyph.atlas,
-        .sy = glyph.sy, .w = glyph.w, .h = glyph.h,
-        .dx = start_x, .dy = y - glyph.top + baseline,
-        .lcd = glyph.lcd,
-        .color = color,
-      });
+      rs->backend->draw_glyph(rs, &glyph, start_x, y - glyph.top + baseline, color);
     }
 
     float adv = font_get_xadvance(fonts[0], codepoint, glyph.xadvance, pen_x - original_pen_x, tab);
