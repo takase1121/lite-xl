@@ -117,8 +117,8 @@ static unsigned texture_create(int w, int h, int bpp, const void *pixels) {
   return tex;
 }
 
-static unsigned atlas_texture(SDL_Surface *surface) {
-  return (unsigned) SDL_GetNumberProperty(SDL_GetSurfaceProperties(surface), "gl_tex", 0);
+static unsigned atlas_texture(const RenAtlas *atlas) {
+  return (unsigned) (uintptr_t) atlas->surface;
 }
 
 /* Uploads are staged and sent right before the next draw. Glyph rows are kept
@@ -184,12 +184,16 @@ static void commit_uploads(void) {
 }
 
 /* the atlas pixels live only in the texture: new glyph rows go straight from the FreeType buffer */
-static void atlas_upload(SDL_Surface *surface, int y, int rows, const uint8_t *src, int pitch, int row_bytes) {
-  const int bpp = SDL_BYTESPERPIXEL(surface->format);
-  unsigned tex = atlas_texture(surface);
+static bool atlas_create(RenAtlas *atlas) {
+  return true;
+}
+
+static void atlas_upload(RenAtlas *atlas, int y, int rows, const uint8_t *src, int pitch, int row_bytes) {
+  const int bpp = SDL_BYTESPERPIXEL(atlas->format);
+  unsigned tex = atlas_texture(atlas);
   if (!tex) {
-    tex = texture_create(surface->w, surface->h, bpp, NULL);
-    SDL_SetNumberProperty(SDL_GetSurfaceProperties(surface), "gl_tex", tex);
+    tex = texture_create(atlas->w, atlas->h, bpp, NULL);
+    atlas->surface = (void *) (uintptr_t) tex;
   }
   const size_t bytes = (size_t) row_bytes * rows;
   if (bytes > STAGE_BYTES) return;
@@ -204,13 +208,13 @@ static void atlas_upload(SDL_Surface *surface, int y, int rows, const uint8_t *s
   }
   staged[staged_count++] = (StagedUpload){
     .tex = tex, .y = y, .rows = rows, .row_bytes = row_bytes,
-    .full_bytes = surface->w * bpp, .bpp = bpp, .offset = stage_used,
+    .full_bytes = atlas->w * bpp, .bpp = bpp, .offset = stage_used,
   };
   stage_used += bytes;
 }
 
-static void atlas_destroyed(SDL_Surface *surface) {
-  unsigned tex = (unsigned) SDL_GetNumberProperty(SDL_GetSurfaceProperties(surface), "gl_tex", 0);
+static void atlas_destroy(RenAtlas *atlas) {
+  unsigned tex = atlas_texture(atlas);
   for (size_t i = 0; i < staged_count; i++) {
     if (staged[i].tex == tex) staged[i].tex = 0;
   }
@@ -434,9 +438,9 @@ const RenBackend renbackend_gl = {
   .get_surface = get_surface,
   .draw_rect = draw_rect,
   .draw_glyph = draw_glyph,
-  .stores_atlas_pixels = false,
+  .atlas_create = atlas_create,
+  .atlas_destroy = atlas_destroy,
   .atlas_upload = atlas_upload,
-  .atlas_destroyed = atlas_destroyed,
   .max_atlas_size = max_atlas_size,
 };
 

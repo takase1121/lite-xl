@@ -9,7 +9,7 @@
 
 typedef struct {
   RenFont *font;
-  SDL_Surface *atlas;  // NULL when the glyph has no bitmap
+  RenAtlas *atlas;      // NULL when the glyph has no bitmap
   int sy, w, h;        // bitmap region in the atlas
   int left, top;       // bitmap offset from the pen position and baseline
   bool lcd;            // atlas holds per-channel coverage
@@ -27,9 +27,9 @@ bool font_group_lookup(RenFont **fonts, unsigned int codepoint, int subpixel_idx
 float font_get_xadvance(RenFont *font, unsigned int codepoint, float xadvance, double curr_x, RenTab tab);
 
 // implemented by the renderer, forwarding to the backends
-SDL_Surface *ren_atlas_create(int w, int h, SDL_PixelFormat format);
-void ren_atlas_upload(SDL_Surface *atlas, int y, int rows, const uint8_t *src, int pitch, int row_bytes);
-void ren_atlas_destroyed(SDL_Surface *atlas);
+RenAtlas *ren_atlas_create(int w, int h, SDL_PixelFormat format);
+void ren_atlas_upload(RenAtlas *atlas, int y, int rows, const uint8_t *src, int pitch, int row_bytes);
+void ren_atlas_destroy(RenAtlas *atlas);
 int ren_max_atlas_size(void);
 
 // https://en.wikipedia.org/wiki/Whitespace_character

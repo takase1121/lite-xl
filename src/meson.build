@@ -11,6 +11,7 @@ lite_sources = [
     'renderer.c',
     'font.c',
     'gl_render.c',
+    'soft_render.c',
     'renwindow.c',
     'rencache.c',
     'main.c',

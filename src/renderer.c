@@ -15,8 +15,6 @@ static RenWindow **window_list = NULL;
 static RenWindow *target_window = NULL;
 static size_t window_count = 0;
 
-// draw_rect_surface is used as a 1x1 surface to simplify ren_draw_rect with blending
-static SDL_Surface *draw_rect_surface = NULL;
 static const RenBackend *backend = &renbackend_soft;
 static const RenBackend *const backends[] = { &renbackend_soft, &renbackend_gl };
 
@@ -76,67 +74,6 @@ double ren_draw_text(RenSurface *rs, RenFont **fonts, const char *text, size_t l
   return pen_x / surface_scale;
 }
 
-void soft_draw_glyph(RenSurface *rs, const RenGlyph *g) {
-  SDL_Surface *surface = rs->surface;
-  SDL_Rect clip;
-  SDL_GetSurfaceClipRect(surface, &clip);
-  int clip_end_x = clip.x + clip.w, clip_end_y = clip.y + clip.h;
-  int start_x = g->dx;
-  if (start_x + g->w < clip.x || start_x >= clip_end_x)
-    return;
-
-  uint8_t *destination_pixels = surface->pixels;
-  uint8_t *source_pixels = g->atlas->pixels;
-  int glyph_end = g->w, glyph_start = 0;
-  for (int line = 0; line < g->h; ++line) {
-    int target_y = line + g->dy;
-    if (target_y < clip.y)
-      continue;
-    if (target_y >= clip_end_y)
-      break;
-    if (start_x + (glyph_end - glyph_start) >= clip_end_x)
-      glyph_end = glyph_start + (clip_end_x - start_x);
-    if (start_x < clip.x) {
-      int offset = clip.x - start_x;
-      start_x += offset;
-      glyph_start += offset;
-    }
-
-    const SDL_PixelFormatDetails* surface_format = SDL_GetPixelFormatDetails(surface->format);
-    const SDL_PixelFormatDetails* font_surface_format = SDL_GetPixelFormatDetails(g->atlas->format);
-
-    uint32_t* destination_pixel = (uint32_t*)&(destination_pixels[surface->pitch * target_y + start_x * surface_format->bytes_per_pixel]);
-    uint8_t* source_pixel = &source_pixels[(g->sy + line) * g->atlas->pitch + glyph_start * font_surface_format->bytes_per_pixel];
-    for (int x = glyph_start; x < glyph_end; ++x) {
-      uint32_t destination_color = *destination_pixel;
-      // the standard way of doing this would be SDL_GetRGBA, but that introduces a performance regression. needs to be investigated
-      SDL_Color dst = {
-        (destination_color & surface_format->Rmask) >> surface_format->Rshift,
-        (destination_color & surface_format->Gmask) >> surface_format->Gshift,
-        (destination_color & surface_format->Bmask) >> surface_format->Bshift,
-        (destination_color & surface_format->Amask) >> surface_format->Ashift};
-      SDL_Color src;
-
-      if (g->lcd) {
-        src.r = *(source_pixel++);
-        src.g = *(source_pixel++);
-      } else {
-        src.r = *(source_pixel);
-        src.g = *(source_pixel);
-      }
-
-      src.b = *(source_pixel++);
-      src.a = 0xFF;
-
-      unsigned r = (g->color.r * src.r * g->color.a + dst.r * (65025 - src.r * g->color.a) + 32767) / 65025;
-      unsigned gr = (g->color.g * src.g * g->color.a + dst.g * (65025 - src.g * g->color.a) + 32767) / 65025;
-      unsigned b = (g->color.b * src.b * g->color.a + dst.b * (65025 - src.b * g->color.a) + 32767) / 65025;
-      // the standard way of doing this would be SDL_GetRGBA, but that introduces a performance regression. needs to be investigated
-      *destination_pixel++ = (unsigned int) dst.a << surface_format->Ashift | r << surface_format->Rshift | gr << surface_format->Gshift | b << surface_format->Bshift;
-    }
-  }
-}
-
 /******************* Rectangles **********************/
 static inline RenColor blend_pixel(RenColor dst, RenColor src) {
   int ia = 0xff - src.a;
@@ -149,31 +86,6 @@ static inline RenColor blend_pixel(RenColor dst, RenColor src) {
 void ren_draw_rect(RenSurface *rs, RenRect rect, RenColor color) {
   if (color.a == 0) { return; }
   rs->backend->draw_rect(rs, rect, color);
-}
-
-void soft_draw_rect(RenSurface *rs, RenRect rect, RenColor color) {
-  SDL_Surface *surface = rs->surface;
-  const int surface_scale = rs->scale;
-
-  SDL_Rect dest_rect = { rect.x * surface_scale,
-                         rect.y * surface_scale,
-                         rect.width * surface_scale,
-                         rect.height * surface_scale };
-
-  if (color.a == 0xff) {
-    uint32_t translated = SDL_MapSurfaceRGB(surface, color.r, color.g, color.b);
-    SDL_FillSurfaceRect(surface, &dest_rect, translated);
-  } else {
-    // Seems like SDL doesn't handle clipping as we expect when using
-    // scaled blitting, so we "clip" manually.
-    SDL_Rect clip;
-    SDL_GetSurfaceClipRect(surface, &clip);
-    if (!SDL_GetRectIntersection(&clip, &dest_rect, &dest_rect)) return;
-
-    uint32_t *pixel = (uint32_t *)draw_rect_surface->pixels;
-    *pixel = SDL_MapSurfaceRGBA(draw_rect_surface, color.r, color.g, color.b, color.a);
-    SDL_BlitSurfaceScaled(draw_rect_surface, NULL, surface, &dest_rect, SDL_SCALEMODE_LINEAR);
-  }
 }
 
 /*************** Window Management ****************/
@@ -230,18 +142,27 @@ bool ren_set_backend(const char *name) {
   return false;
 }
 
-SDL_Surface *ren_atlas_create(int w, int h, SDL_PixelFormat format) {
-  return backend->stores_atlas_pixels ? SDL_CreateSurface(w, h, format) : SDL_CreateSurfaceFrom(w, h, format, NULL, 0);
-}
-
-void ren_atlas_upload(SDL_Surface *atlas, int y, int rows, const uint8_t *src, int pitch, int row_bytes) {
-  backend->atlas_upload(atlas, y, rows, src, pitch, row_bytes);
-}
-
-void ren_atlas_destroyed(SDL_Surface *atlas) {
-  for (size_t i = 0; i < sizeof(backends) / sizeof(*backends); i++) {
-    if (backends[i]->atlas_destroyed) backends[i]->atlas_destroyed(atlas);
+RenAtlas *ren_atlas_create(int w, int h, SDL_PixelFormat format) {
+  RenAtlas *atlas = SDL_calloc(1, sizeof(RenAtlas));
+  if (!atlas) return NULL;
+  atlas->backend = backend;
+  atlas->w = w;
+  atlas->h = h;
+  atlas->format = format;
+  if (!backend->atlas_create(atlas)) {
+    SDL_free(atlas);
+    return NULL;
   }
+  return atlas;
+}
+
+void ren_atlas_upload(RenAtlas *atlas, int y, int rows, const uint8_t *src, int pitch, int row_bytes) {
+  atlas->backend->atlas_upload(atlas, y, rows, src, pitch, row_bytes);
+}
+
+void ren_atlas_destroy(RenAtlas *atlas) {
+  atlas->backend->atlas_destroy(atlas);
+  SDL_free(atlas);
 }
 
 int ren_max_atlas_size(void) {
@@ -253,16 +174,10 @@ SDL_WindowFlags ren_window_flags(void) {
 }
 
 int ren_init(void) {
-  draw_rect_surface = SDL_CreateSurface(1, 1, SDL_PIXELFORMAT_RGBA32);
-
-  if (!draw_rect_surface)
-    return -1; // error set by SDL_CreateRGBSurface
-
   return font_init();
 }
 
 void ren_free(void) {
-  SDL_DestroySurface(draw_rect_surface);
   font_free();
 }
 

@@ -23,6 +23,14 @@ typedef struct { double offset; } RenTab;
 struct RenBackend;
 typedef struct { SDL_Surface *surface; int scale; const struct RenBackend *backend; void *data; } RenSurface;
 
+typedef struct RenAtlas {
+  const struct RenBackend *backend; /* set by ren_atlas_create, routes upload and destroy */
+  void *surface;                    /* soft: SDL_Surface *; gl: texture id as (void *)(uintptr_t), NULL until first upload */
+  int w, h;
+  SDL_PixelFormat format;
+  void *userdata;                   /* owned by the font cache */
+} RenAtlas;
+
 struct RenWindow;
 typedef struct RenWindow RenWindow;
 

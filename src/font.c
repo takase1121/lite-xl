@@ -13,6 +13,7 @@
 
 #include "renderer.h"
 #include "font.h"
+#include "renbackend.h"
 
 // uncomment the line below for more debugging information through printf
 // #define RENDERER_DEBUG
@@ -90,7 +91,7 @@ typedef struct {
 
 // a bitmap atlas with a fixed width, each surface acting as a bump allocator
 typedef struct {
-  SDL_Surface **surfaces;
+  RenAtlas **surfaces;
   unsigned int width, nsurface;
 } GlyphAtlas;
 
@@ -216,7 +217,7 @@ static inline SDL_PixelFormat glyphformat_to_pixelformat(ERenGlyphFormat format,
   }
 }
 
-static SDL_Surface *font_allocate_glyph_surface(RenFont *font, FT_GlyphSlot slot, int bitmap_idx, GlyphMetric *metric) {
+static RenAtlas *font_allocate_glyph_surface(RenFont *font, FT_GlyphSlot slot, int bitmap_idx, GlyphMetric *metric) {
   // get an atlas with the correct width
   ERenGlyphFormat glyph_format = SLOT_BITMAP_TYPE(slot->bitmap);
   int atlas_idx = -1;
@@ -239,15 +240,12 @@ static SDL_Surface *font_allocate_glyph_surface(RenFont *font, FT_GlyphSlot slot
   }
   metric->atlas_idx = atlas_idx;
   GlyphAtlas *atlas = &font->glyphs.atlas[glyph_format][atlas_idx];
-  SDL_PropertiesID userdata;
 
   // find the surface with the minimum height that can fit the glyph (limited to last 100 surfaces)
   int surface_idx = -1, max_surface_idx = (int) atlas->nsurface - 100, min_waste = INT_MAX;
   for (int i = atlas->nsurface - 1; i >= 0 && i > max_surface_idx; i--) {
-    userdata = SDL_GetSurfaceProperties(atlas->surfaces[i]);
-    assert(SDL_HasProperty(userdata, "metric"));
-    GlyphMetric *m = (GlyphMetric *) SDL_GetPointerProperty(userdata, "metric", NULL);
-    int new_min_waste = (int) atlas->surfaces[i]->h - (int) m->y1;
+    GlyphMetric *m = atlas->surfaces[i]->userdata;
+    int new_min_waste = (int) atlas->surfaces[i]->h - (m ? (int) m->y1 : 0);
     if (new_min_waste >= metric->y1 && new_min_waste < min_waste) {
       surface_idx = i;
       min_waste = new_min_waste;
@@ -260,24 +258,22 @@ static SDL_Surface *font_allocate_glyph_surface(RenFont *font, FT_GlyphSlot slot
     if (h <= FONT_HEIGHT_OVERFLOW_PX) h += font->size;
     int depth = 0;
     SDL_PixelFormat format = glyphformat_to_pixelformat(glyph_format, &depth);
-    atlas->surfaces = check_alloc(SDL_realloc(atlas->surfaces, sizeof(SDL_Surface *) * (atlas->nsurface + 1)));
+    atlas->surfaces = check_alloc(SDL_realloc(atlas->surfaces, sizeof(RenAtlas *) * (atlas->nsurface + 1)));
     // GL textures cannot exceed GL_MAX_TEXTURE_SIZE
     int glyphs = GLYPHS_PER_ATLAS, max_tex = ren_max_atlas_size();
     if (max_tex && glyphs * h > max_tex) glyphs = max_tex / h > 0 ? max_tex / h : 1;
     atlas->surfaces[atlas->nsurface] = check_alloc(ren_atlas_create(atlas->width, glyphs * h, format));
-    userdata = SDL_GetSurfaceProperties(atlas->surfaces[atlas->nsurface]);
-    SDL_SetPointerProperty(userdata, "metric", NULL);
     surface_idx = atlas->nsurface++;
-    font->glyphs.bytesize += (sizeof(SDL_Surface *) + sizeof(SDL_Surface) + atlas->width * glyphs * h * glyph_format);
+    font->glyphs.bytesize += (sizeof(RenAtlas *) + sizeof(RenAtlas) + atlas->width * glyphs * h * glyph_format);
   }
   metric->surface_idx = surface_idx;
-  userdata = SDL_GetSurfaceProperties(atlas->surfaces[surface_idx]);
-  if (SDL_HasProperty(userdata, "metric")) {
-    GlyphMetric *last_metric = (GlyphMetric *) SDL_GetPointerProperty(userdata, "metric", NULL);
+  RenAtlas *surface = atlas->surfaces[surface_idx];
+  if (surface->userdata) {
+    GlyphMetric *last_metric = surface->userdata;
     metric->y0 = last_metric->y1; metric->y1 += last_metric->y1;
   }
-  SDL_SetPointerProperty(userdata, "metric", (void *) metric);
-  return atlas->surfaces[surface_idx];
+  surface->userdata = metric;
+  return surface;
 }
 
 static GlyphMetric *font_load_glyph_metric(RenFont *font, unsigned int glyph_id, unsigned int bitmap_idx) {
@@ -306,7 +302,7 @@ static GlyphMetric *font_load_glyph_metric(RenFont *font, unsigned int glyph_id,
   return &font->glyphs.metrics[bitmap_idx][row][col];
 }
 
-static SDL_Surface *font_load_glyph_bitmap(RenFont *font, unsigned int glyph_id, unsigned int bitmap_idx) {
+static RenAtlas *font_load_glyph_bitmap(RenFont *font, unsigned int glyph_id, unsigned int bitmap_idx) {
   GlyphMetric *metric = font_load_glyph_metric(font, glyph_id, bitmap_idx);
   if (!metric) return NULL;
   if (metric->flags & EGlyphBitmap) return font->glyphs.atlas[metric->format][metric->atlas_idx].surfaces[metric->surface_idx];
@@ -338,7 +334,7 @@ static SDL_Surface *font_load_glyph_bitmap(RenFont *font, unsigned int glyph_id,
   metric->format = SLOT_BITMAP_TYPE(slot->bitmap);
 
   // find the best surface to copy the glyph over, and copy it
-  SDL_Surface *surface = font_allocate_glyph_surface(font, slot, bitmap_idx, metric);
+  RenAtlas *surface = font_allocate_glyph_surface(font, slot, bitmap_idx, metric);
   const uint8_t *src = slot->bitmap.buffer;
   int pitch = slot->bitmap.pitch;
   uint8_t *expanded = NULL;
@@ -359,7 +355,7 @@ static SDL_Surface *font_load_glyph_bitmap(RenFont *font, unsigned int glyph_id,
   return surface;
 }
 
-static RenFont *font_group_get_glyph(RenFont **fonts, unsigned int codepoint, int subpixel_idx, SDL_Surface **surface, GlyphMetric **metric) {
+static RenFont *font_group_get_glyph(RenFont **fonts, unsigned int codepoint, int subpixel_idx, RenAtlas **surface, GlyphMetric **metric) {
   if (subpixel_idx < 0) subpixel_idx += SUBPIXEL_BITMAPS_CACHED;
   RenFont *font = NULL;
   unsigned int glyph_id = 0;
@@ -384,8 +380,7 @@ static void font_clear_glyph_cache(RenFont* font) {
     for (int atlas_idx = 0; atlas_idx < font->glyphs.natlas[glyph_format_idx]; atlas_idx++) {
       GlyphAtlas *atlas = &font->glyphs.atlas[glyph_format_idx][atlas_idx];
       for (int surface_idx = 0; surface_idx < atlas->nsurface; surface_idx++) {
-        ren_atlas_destroyed(atlas->surfaces[surface_idx]);
-        SDL_DestroySurface(atlas->surfaces[surface_idx]);
+        ren_atlas_destroy(atlas->surfaces[surface_idx]);
       }
       SDL_free(atlas->surfaces);
     }
@@ -599,7 +594,7 @@ void ren_font_dump(RenFont *font) {
       GlyphAtlas *atlas = &font->glyphs.atlas[glyph_format_idx][atlas_idx];
       for (int surface_idx = 0; surface_idx < atlas->nsurface; surface_idx++) {
         snprintf(filename, 1024, "%s-%d-%d-%d.bmp", font->face->family_name, glyph_format_idx, atlas_idx, surface_idx);
-        SDL_SaveBMP(atlas->surfaces[surface_idx], filename);
+        if (atlas->surfaces[surface_idx]->backend == &renbackend_soft) SDL_SaveBMP(atlas->surfaces[surface_idx]->surface, filename);
       }
     }
   }
@@ -608,7 +603,7 @@ void ren_font_dump(RenFont *font) {
 #endif
 
 bool font_group_lookup(RenFont **fonts, unsigned int codepoint, int subpixel_idx, FontGlyph *out) {
-  SDL_Surface *atlas = NULL; GlyphMetric *metric = NULL;
+  RenAtlas *atlas = NULL; GlyphMetric *metric = NULL;
   RenFont *font = font_group_get_glyph(fonts, codepoint, subpixel_idx, &atlas, &metric);
   if (!metric)
     return false;

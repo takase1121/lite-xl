@@ -4,7 +4,7 @@
 #include "renderer.h"
 
 typedef struct {
-  SDL_Surface *atlas;  /* glyph atlas, one tall surface with glyphs stacked vertically */
+  RenAtlas *atlas;     /* glyph atlas, one tall surface with glyphs stacked vertically */
   int sy, w, h;        /* source region in the atlas: rows [sy, sy + h), columns [0, w) */
   int dx, dy;          /* destination of the top-left corner */
   bool lcd;            /* atlas holds per-channel (subpixel) coverage */
@@ -27,21 +27,16 @@ typedef struct RenBackend {
   RenSurface (*get_surface)(RenWindow *ren);
   void (*draw_rect)(RenSurface *rs, RenRect rect, RenColor color);
   void (*draw_glyph)(RenSurface *rs, const RenGlyph *glyph);
-  /* Glyph atlases are SDL surfaces packed by the font cache. Backends that keep the
-  ** pixels elsewhere leave stores_atlas_pixels false and get a pixel-less surface. */
-  bool stores_atlas_pixels;
+  /* The renderer allocates the RenAtlas and fills w, h and format; the backend owns ->surface. */
+  bool (*atlas_create)(RenAtlas *atlas);
+  void (*atlas_destroy)(RenAtlas *atlas);
   /* copies `rows` rows of `row_bytes` bytes at `src` into the atlas starting at row y */
-  void (*atlas_upload)(SDL_Surface *atlas, int y, int rows, const uint8_t *src, int pitch, int row_bytes);
+  void (*atlas_upload)(RenAtlas *atlas, int y, int rows, const uint8_t *src, int pitch, int row_bytes);
   /* optional */
-  void (*atlas_destroyed)(SDL_Surface *atlas);
   int (*max_atlas_size)(void);
 } RenBackend;
 
 extern const RenBackend renbackend_soft;
 extern const RenBackend renbackend_gl;
-
-/* software drawing, implemented next to the font code */
-void soft_draw_rect(RenSurface *rs, RenRect rect, RenColor color);
-void soft_draw_glyph(RenSurface *rs, const RenGlyph *glyph);
 
 #endif
