@@ -124,7 +124,7 @@ int video_init(void) {
     SDL_SetHint("SDL_MOUSE_DOUBLE_CLICK_RADIUS", "4");
     SDL_SetHint(SDL_HINT_RENDER_DRIVER, "software");
     if (SDL_getenv("LITE_GL") && !ren_set_backend("gl"))
-      fprintf(stderr, "renderer: LITE_GL set but the GL backend is not built in (no glesv2 or LITE_USE_SDL_RENDERER)\n");
+      fprintf(stderr, "renderer: LITE_GL set but the GL backend is not built in (no usable OpenGL or GLES2 context)\n");
     fprintf(stderr, "renderer: %s backend\n", backend->name);
     ren_inited = 1;
   }

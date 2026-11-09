@@ -68,13 +68,6 @@ sdl_dep = dependency('sdl3', static: true)
 
 lite_deps = [lua_dep, sdl_dep, freetype_dep, pcre2_dep, libm, libdl]
 
-# Optional GLES2 renderer, enabled at runtime with the LITE_GL environment variable
-glesv2_dep = dependency('glesv2', required : false)
-if glesv2_dep.found()
-    lite_deps += glesv2_dep
-    lite_cargs += '-DLITE_USE_GL'
-endif
-
 lite_sources += 'api/dirmonitor.c'
 # dirmonitor backend
 if get_option('dirmonitor_backend') == ''

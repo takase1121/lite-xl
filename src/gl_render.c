@@ -1,12 +1,117 @@
 #include "renbackend.h"
 #include "renwindow.h"
 
-#if defined(LITE_USE_GL) && !defined(LITE_USE_SDL_RENDERER)
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
-#include <SDL3/SDL_opengles2.h>
+#include <SDL3/SDL_opengl.h>
+
+/* Every GL function is loaded at runtime, so one binary can drive either GLES2 or
+** desktop OpenGL 2.1 (compatibility) with nothing GL-related linked in. */
+#define GL_FUNCS(X) \
+  X(void, glBindTexture, (GLenum, GLuint)) \
+  X(void, glBlendFunc, (GLenum, GLenum)) \
+  X(void, glClear, (GLbitfield)) \
+  X(void, glClearColor, (GLfloat, GLfloat, GLfloat, GLfloat)) \
+  X(void, glColorMask, (GLboolean, GLboolean, GLboolean, GLboolean)) \
+  X(void, glDeleteTextures, (GLsizei, const GLuint *)) \
+  X(void, glDisable, (GLenum)) \
+  X(void, glDrawArrays, (GLenum, GLint, GLsizei)) \
+  X(void, glEnable, (GLenum)) \
+  X(void, glFinish, (void)) \
+  X(void, glGenTextures, (GLsizei, GLuint *)) \
+  X(void, glGetIntegerv, (GLenum, GLint *)) \
+  X(const GLubyte *, glGetString, (GLenum)) \
+  X(void, glPixelStorei, (GLenum, GLint)) \
+  X(void, glScissor, (GLint, GLint, GLsizei, GLsizei)) \
+  X(void, glTexImage2D, (GLenum, GLint, GLint, GLsizei, GLsizei, GLint, GLenum, GLenum, const void *)) \
+  X(void, glTexParameteri, (GLenum, GLenum, GLint)) \
+  X(void, glTexSubImage2D, (GLenum, GLint, GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, const void *)) \
+  X(void, glViewport, (GLint, GLint, GLsizei, GLsizei)) \
+  X(void, glActiveTexture, (GLenum)) \
+  X(void, glAttachShader, (GLuint, GLuint)) \
+  X(void, glBindAttribLocation, (GLuint, GLuint, const GLchar *)) \
+  X(void, glBindBuffer, (GLenum, GLuint)) \
+  X(void, glBufferData, (GLenum, GLsizeiptr, const void *, GLenum)) \
+  X(void, glCompileShader, (GLuint)) \
+  X(GLuint, glCreateProgram, (void)) \
+  X(GLuint, glCreateShader, (GLenum)) \
+  X(void, glDeleteBuffers, (GLsizei, const GLuint *)) \
+  X(void, glDeleteProgram, (GLuint)) \
+  X(void, glDeleteShader, (GLuint)) \
+  X(void, glEnableVertexAttribArray, (GLuint)) \
+  X(void, glGenBuffers, (GLsizei, GLuint *)) \
+  X(void, glGetProgramInfoLog, (GLuint, GLsizei, GLsizei *, GLchar *)) \
+  X(void, glGetProgramiv, (GLuint, GLenum, GLint *)) \
+  X(void, glGetShaderInfoLog, (GLuint, GLsizei, GLsizei *, GLchar *)) \
+  X(void, glGetShaderiv, (GLuint, GLenum, GLint *)) \
+  X(GLint, glGetUniformLocation, (GLuint, const GLchar *)) \
+  X(void, glLinkProgram, (GLuint)) \
+  X(void, glShaderSource, (GLuint, GLsizei, const GLchar *const *, const GLint *)) \
+  X(void, glUniform1i, (GLint, GLint)) \
+  X(void, glUniform2f, (GLint, GLfloat, GLfloat)) \
+  X(void, glUniform3fv, (GLint, GLsizei, const GLfloat *)) \
+  X(void, glUseProgram, (GLuint)) \
+  X(void, glVertexAttribPointer, (GLuint, GLint, GLenum, GLboolean, GLsizei, const void *))
+
+#define X(ret, name, args) static ret (APIENTRY *p_##name) args;
+GL_FUNCS(X)
+#undef X
+
+static bool load_gl_functions(void) {
+#define X(ret, name, args) if (!(*(void **) &p_##name = (void *) SDL_GL_GetProcAddress(#name))) return false;
+  GL_FUNCS(X)
+#undef X
+  return true;
+}
+
+#define glBindTexture p_glBindTexture
+#define glBlendFunc p_glBlendFunc
+#define glClear p_glClear
+#define glClearColor p_glClearColor
+#define glColorMask p_glColorMask
+#define glDeleteTextures p_glDeleteTextures
+#define glDisable p_glDisable
+#define glDrawArrays p_glDrawArrays
+#define glEnable p_glEnable
+#define glFinish p_glFinish
+#define glGenTextures p_glGenTextures
+#define glGetIntegerv p_glGetIntegerv
+#define glGetString p_glGetString
+#define glPixelStorei p_glPixelStorei
+#define glScissor p_glScissor
+#define glTexImage2D p_glTexImage2D
+#define glTexParameteri p_glTexParameteri
+#define glTexSubImage2D p_glTexSubImage2D
+#define glViewport p_glViewport
+#define glActiveTexture p_glActiveTexture
+#define glAttachShader p_glAttachShader
+#define glBindAttribLocation p_glBindAttribLocation
+#define glBindBuffer p_glBindBuffer
+#define glBufferData p_glBufferData
+#define glCompileShader p_glCompileShader
+#define glCreateProgram p_glCreateProgram
+#define glCreateShader p_glCreateShader
+#define glDeleteBuffers p_glDeleteBuffers
+#define glDeleteProgram p_glDeleteProgram
+#define glDeleteShader p_glDeleteShader
+#define glEnableVertexAttribArray p_glEnableVertexAttribArray
+#define glGenBuffers p_glGenBuffers
+#define glGetProgramInfoLog p_glGetProgramInfoLog
+#define glGetProgramiv p_glGetProgramiv
+#define glGetShaderInfoLog p_glGetShaderInfoLog
+#define glGetShaderiv p_glGetShaderiv
+#define glGetUniformLocation p_glGetUniformLocation
+#define glLinkProgram p_glLinkProgram
+#define glShaderSource p_glShaderSource
+#define glUniform1i p_glUniform1i
+#define glUniform2f p_glUniform2f
+#define glUniform3fv p_glUniform3fv
+#define glUseProgram p_glUseProgram
+#define glVertexAttribPointer p_glVertexAttribPointer
+
+/* chosen by available(): GLES2 or desktop OpenGL 2.1 */
+static bool use_es;
 
 enum { LOC_POS, LOC_UV, LOC_COL };
 
@@ -41,7 +146,9 @@ static const char *vs_src =
   "}\n";
 
 static const char *fs_src =
+  "#ifdef GL_ES\n"
   "precision mediump float;\n"
+  "#endif\n"
   "uniform sampler2D uTex;\n"
   "uniform vec3 uSel;\n"
   "varying vec2 vUV;\n"
@@ -51,8 +158,9 @@ static const char *fs_src =
   "}\n";
 
 static GLuint compile_shader(GLenum type, const char *src) {
+  const char *sources[] = { use_es ? "" : "#version 120\n", src };
   GLuint s = glCreateShader(type);
-  glShaderSource(s, 1, &src, NULL);
+  glShaderSource(s, 2, sources, NULL);
   glCompileShader(s);
   GLint ok = 0;
   glGetShaderiv(s, GL_COMPILE_STATUS, &ok);
@@ -286,6 +394,11 @@ static GLRenderer *create(SDL_Window *window, GLRenderer *share) {
   SDL_GLContext ctx = SDL_GL_CreateContext(window);
   SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0);
   if (!ctx) return NULL;
+  if (!load_gl_functions()) {
+    SDL_GL_DestroyContext(ctx);
+    SDL_SetError("could not load OpenGL functions");
+    return NULL;
+  }
   SDL_GL_SetSwapInterval(SDL_getenv("LITE_GL_NOVSYNC") ? 0 : 1);
 
   GLRenderer *gl = SDL_calloc(1, sizeof(GLRenderer));
@@ -310,8 +423,8 @@ static GLRenderer *create(SDL_Window *window, GLRenderer *share) {
   if (!max_texture_size) {
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size);
   }
-  fprintf(stderr, "gl: GLES2 renderer active: %s | %s | %s | max texture %d\n",
-          (const char*) glGetString(GL_RENDERER), (const char*) glGetString(GL_VERSION),
+  fprintf(stderr, "gl: %s renderer active: %s | %s | %s | max texture %d\n",
+          use_es ? "GLES2" : "OpenGL 2.1", (const char*) glGetString(GL_RENDERER), (const char*) glGetString(GL_VERSION),
           SDL_GetCurrentVideoDriver(), max_texture_size);
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -324,14 +437,58 @@ static GLRenderer *gl_of(RenWindow *ren) {
   return ren->backend_data;
 }
 
+static void set_context_attributes(bool es) {
+  if (es) {
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+  } else {
+    /* compatibility 2.1 is also what macOS hands out when core is not requested */
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+  }
+}
+
+static bool probe(bool es) {
+  set_context_attributes(es);
+  bool ok = false;
+  SDL_Window *window = SDL_CreateWindow("", 1, 1, SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
+  if (window) {
+    SDL_GLContext ctx = SDL_GL_CreateContext(window);
+    if (ctx) SDL_GL_DestroyContext(ctx);
+    ok = ctx != NULL;
+    SDL_DestroyWindow(window);
+  }
+  /* drop the events of the throwaway window, nobody owns its id */
+  SDL_PumpEvents();
+  SDL_FlushEvents(SDL_EVENT_WINDOW_FIRST, SDL_EVENT_WINDOW_LAST);
+  return ok;
+}
+
+/* tries both profiles on a throwaway window; the window itself cannot be retried
+** because some platforms fix the pixel format when the window is created */
 static bool available(void) {
-  return true;
+  static int state;
+  if (!state) {
+#if defined(_WIN32) || defined(__APPLE__)
+    const bool order[2] = { false, true };
+#else
+    const bool order[2] = { true, false };
+#endif
+    state = -1;
+    for (int i = 0; i < 2 && state < 0; i++) {
+      if (probe(order[i])) {
+        use_es = order[i];
+        state = 1;
+      }
+    }
+  }
+  return state > 0;
 }
 
 static SDL_WindowFlags window_flags(void) {
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+  set_context_attributes(use_es);
   return SDL_WINDOW_OPENGL | SDL_WINDOW_HIGH_PIXEL_DENSITY;
 }
 
@@ -443,11 +600,3 @@ const RenBackend renbackend_gl = {
   .atlas_upload = atlas_upload,
   .max_atlas_size = max_atlas_size,
 };
-
-#else
-
-static bool unavailable(void) { return false; }
-
-const RenBackend renbackend_gl = { .name = "gl", .available = unavailable };
-
-#endif
