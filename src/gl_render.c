@@ -121,6 +121,68 @@ static unsigned atlas_texture(SDL_Surface *surface) {
   return (unsigned) SDL_GetNumberProperty(SDL_GetSurfaceProperties(surface), "gl_tex", 0);
 }
 
+/* Uploads are staged and sent right before the next draw. Glyph rows are kept
+** tightly packed in an arena. On commit they are sorted by (texture, row) and
+** adjacent row ranges are gathered into a scratch buffer, padded to the
+** surface width, so each run goes up as one full-width upload. Padding is
+** safe because every glyph owns its band of rows in the atlas. */
+#define STAGE_BYTES (4 << 20)
+#define STAGE_ENTRIES 4096
+#define SCRATCH_BYTES (1 << 20)
+
+typedef struct {
+  unsigned tex;
+  int y, rows, row_bytes, full_bytes, bpp;
+  size_t offset;
+} StagedUpload;
+
+static StagedUpload staged[STAGE_ENTRIES];
+static size_t staged_count, stage_used;
+static uint8_t *stage_buf, *scratch_buf;
+
+static int staged_cmp(const void *a, const void *b) {
+  const StagedUpload *x = a, *y = b;
+  if (x->tex != y->tex) return x->tex < y->tex ? -1 : 1;
+  return x->y - y->y;
+}
+
+static void upload_rows(unsigned tex, int y, int rows, int width_px, int bpp, const void *data) {
+  glBindTexture(GL_TEXTURE_2D, tex);
+  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y, width_px, rows, texture_format(bpp), GL_UNSIGNED_BYTE, data);
+}
+
+static void commit_uploads(void) {
+  if (!staged_count) return;
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  SDL_qsort(staged, staged_count, sizeof *staged, staged_cmp);
+  for (size_t i = 0; i < staged_count;) {
+    const StagedUpload *first = &staged[i];
+    if (!first->tex) { i++; continue; }
+    int rows = 0;
+    size_t j = i;
+    while (j < staged_count && staged[j].tex == first->tex && staged[j].y == first->y + rows
+           && (size_t) (rows + staged[j].rows) * first->full_bytes <= SCRATCH_BYTES) {
+      const StagedUpload *s = &staged[j];
+      for (int line = 0; line < s->rows; line++) {
+        uint8_t *dst = scratch_buf + (size_t) (rows + line) * s->full_bytes;
+        SDL_memcpy(dst, stage_buf + s->offset + (size_t) line * s->row_bytes, s->row_bytes);
+        SDL_memset(dst + s->row_bytes, 0, s->full_bytes - s->row_bytes);
+      }
+      rows += s->rows;
+      j++;
+    }
+    if (j == i) {
+      upload_rows(first->tex, first->y, first->rows, first->row_bytes / first->bpp, first->bpp, stage_buf + first->offset);
+      i++;
+    } else {
+      upload_rows(first->tex, first->y, rows, first->full_bytes / first->bpp, first->bpp, scratch_buf);
+      i = j;
+    }
+  }
+  staged_count = 0;
+  stage_used = 0;
+}
+
 /* the atlas pixels live only in the texture: new glyph rows go straight from the FreeType buffer */
 static void atlas_upload(SDL_Surface *surface, int y, int rows, const uint8_t *src, int pitch, int row_bytes) {
   const int bpp = SDL_BYTESPERPIXEL(surface->format);
@@ -129,24 +191,29 @@ static void atlas_upload(SDL_Surface *surface, int y, int rows, const uint8_t *s
     tex = texture_create(surface->w, surface->h, bpp, NULL);
     SDL_SetNumberProperty(SDL_GetSurfaceProperties(surface), "gl_tex", tex);
   }
-  glBindTexture(GL_TEXTURE_2D, tex);
-  /* GLES2 has no GL_UNPACK_ROW_LENGTH, so padded rows must be repacked. */
-  uint8_t *packed = NULL;
-  if (pitch != row_bytes) {
-    packed = SDL_malloc((size_t) row_bytes * rows);
-    if (!packed) return;
-    for (int line = 0; line < rows; line++) {
-      SDL_memcpy(packed + (size_t) line * row_bytes, src + (size_t) line * pitch, row_bytes);
-    }
-    src = packed;
+  const size_t bytes = (size_t) row_bytes * rows;
+  if (bytes > STAGE_BYTES) return;
+  if (!stage_buf) {
+    stage_buf = SDL_malloc(STAGE_BYTES);
+    scratch_buf = SDL_malloc(SCRATCH_BYTES);
   }
-  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y, row_bytes / bpp, rows, texture_format(bpp), GL_UNSIGNED_BYTE, src);
-  SDL_free(packed);
+  if (!stage_buf || !scratch_buf) return;
+  if (staged_count == STAGE_ENTRIES || stage_used + bytes > STAGE_BYTES) commit_uploads();
+  for (int line = 0; line < rows; line++) {
+    SDL_memcpy(stage_buf + stage_used + (size_t) line * row_bytes, src + (size_t) line * pitch, row_bytes);
+  }
+  staged[staged_count++] = (StagedUpload){
+    .tex = tex, .y = y, .rows = rows, .row_bytes = row_bytes,
+    .full_bytes = surface->w * bpp, .bpp = bpp, .offset = stage_used,
+  };
+  stage_used += bytes;
 }
 
 static void atlas_destroyed(SDL_Surface *surface) {
   unsigned tex = (unsigned) SDL_GetNumberProperty(SDL_GetSurfaceProperties(surface), "gl_tex", 0);
+  for (size_t i = 0; i < staged_count; i++) {
+    if (staged[i].tex == tex) staged[i].tex = 0;
+  }
   if (tex && SDL_GL_GetCurrentContext()) {
     glDeleteTextures(1, &tex);
   }
@@ -157,6 +224,7 @@ static int max_atlas_size(void) {
 }
 
 static void flush(GLRenderer *gl) {
+  commit_uploads();
   if (!gl->count) return;
   glBindBuffer(GL_ARRAY_BUFFER, gl->vbo);
   glBufferData(GL_ARRAY_BUFFER, gl->count * sizeof(GLVert), gl->verts, GL_STREAM_DRAW);
