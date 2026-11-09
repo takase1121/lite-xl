@@ -135,6 +135,8 @@ static void soft_get_size(RenWindow *ren, int *w, int *h) {
 #endif
 }
 
+static void soft_begin_frame(UNUSED RenWindow *ren) {}
+
 static void soft_present(RenWindow *ren, RenRect *rects, int count) {
 #ifdef LITE_USE_SDL_RENDERER
   const int scale = ren->rensurface.scale;
@@ -167,12 +169,14 @@ static void soft_atlas_upload(SDL_Surface *atlas, int y, int rows, const uint8_t
 
 const RenBackend renbackend_soft = {
   .name = "soft",
+  .full_redraw = false,
   .available = soft_available,
   .window_flags = soft_window_flags,
   .init_window = soft_init_window,
   .free_window = soft_free_window,
   .resize = soft_resize,
   .get_size = soft_get_size,
+  .begin_frame = soft_begin_frame,
   .present = soft_present,
   .set_clip = soft_set_clip,
   .get_surface = soft_get_surface,

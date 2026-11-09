@@ -10,6 +10,7 @@ lite_sources = [
     'custom_events.c',
     'renderer.c',
     'font.c',
+    'gl_render.c',
     'renwindow.c',
     'rencache.c',
     'main.c',
@@ -65,6 +66,13 @@ freetype_dep = dependency('freetype2', fallback: ['freetype2', 'freetype_dep'],
 sdl_dep = dependency('sdl3', static: true)
 
 lite_deps = [lua_dep, sdl_dep, freetype_dep, pcre2_dep, libm, libdl]
+
+# Optional GLES2 renderer, enabled at runtime with the LITE_GL environment variable
+glesv2_dep = dependency('glesv2', required : false)
+if glesv2_dep.found()
+    lite_deps += glesv2_dep
+    lite_cargs += '-DLITE_USE_GL'
+endif
 
 lite_sources += 'api/dirmonitor.c'
 # dirmonitor backend

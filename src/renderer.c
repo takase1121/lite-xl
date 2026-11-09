@@ -18,7 +18,7 @@ static size_t window_count = 0;
 // draw_rect_surface is used as a 1x1 surface to simplify ren_draw_rect with blending
 static SDL_Surface *draw_rect_surface = NULL;
 static const RenBackend *backend = &renbackend_soft;
-static const RenBackend *const backends[] = { &renbackend_soft };
+static const RenBackend *const backends[] = { &renbackend_soft, &renbackend_gl };
 
 double ren_draw_text(RenSurface *rs, RenFont **fonts, const char *text, size_t len, float x, int y, RenColor color, RenTab tab) {
   const int surface_scale = rs->scale;
