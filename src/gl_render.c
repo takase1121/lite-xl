@@ -564,7 +564,7 @@ static void begin_frame(RenWindow *ren) {
   glClear(GL_COLOR_BUFFER_BIT);
 }
 
-static void present(RenWindow *ren, UNUSED RenRect *rects, UNUSED int count) {
+static void end_frame(RenWindow *ren, UNUSED RenRect *rects, UNUSED int count) {
   GLRenderer *gl = gl_of(ren);
   flush(gl);
   /* with vsync off, wait for the GPU so frame timings include its work */
@@ -603,7 +603,7 @@ const RenBackend renbackend_gl = {
   .resize = resize,
   .get_size = get_size,
   .begin_frame = begin_frame,
-  .end_frame = present,
+  .end_frame = end_frame,
   .set_clip = set_clip,
   .get_surface = get_surface,
   .draw_rect = draw_rect,
