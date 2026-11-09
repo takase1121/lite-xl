@@ -9,6 +9,7 @@ lite_sources = [
     'arena_allocator.c',
     'custom_events.c',
     'renderer.c',
+    'font.c',
     'renwindow.c',
     'rencache.c',
     'main.c',
