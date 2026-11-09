@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include "renwindow.h"
+#include "renbackend.h"
 
 #ifdef LITE_USE_SDL_RENDERER
 static int query_surface_scale(RenWindow *ren) {
@@ -30,8 +31,51 @@ static void setup_renderer(RenWindow *ren, int w, int h) {
 #endif
 
 
-void renwin_init_surface(RenWindow *ren) {
-  ren->scale_x = ren->scale_y = 1;
+void renwin_init_command_buf(RenWindow *ren) {
+  ren->command_buf = NULL;
+  ren->command_buf_idx = 0;
+  ren->command_buf_size = 0;
+}
+
+void renwin_show_window(RenWindow *ren) {
+  SDL_ShowWindow(ren->window);
+}
+
+RenSurface renwin_get_surface(RenWindow *ren) {
+  return ren->backend->get_surface(ren);
+}
+
+
+/************************* Software backend *************************/
+
+static RenRect scaled_rect(const RenRect rect, const int scale) {
+  return (RenRect) {rect.x * scale, rect.y * scale, rect.width * scale, rect.height * scale};
+}
+
+static bool soft_available(void) {
+  return true;
+}
+
+static SDL_WindowFlags soft_window_flags(void) {
+  return SDL_WINDOW_HIGH_PIXEL_DENSITY;
+}
+
+static RenSurface soft_get_surface(RenWindow *ren) {
+#ifdef LITE_USE_SDL_RENDERER
+  RenSurface rs = ren->rensurface;
+  rs.backend = ren->backend;
+  return rs;
+#else
+  SDL_Surface *surface = SDL_GetWindowSurface(ren->window);
+  if (!surface) {
+    fprintf(stderr, "Error getting window surface: %s", SDL_GetError());
+    exit(1);
+  }
+  return (RenSurface){.surface = surface, .scale = 1, .backend = ren->backend};
+#endif
+}
+
+static bool soft_init_window(RenWindow *ren) {
 #ifdef LITE_USE_SDL_RENDERER
   if (ren->rensurface.surface) {
     SDL_DestroySurface(ren->rensurface.surface);
@@ -46,46 +90,21 @@ void renwin_init_surface(RenWindow *ren) {
   }
   setup_renderer(ren, w, h);
 #endif
+  SDL_SetSurfaceClipRect(soft_get_surface(ren).surface, NULL);
+  return true;
 }
 
-void renwin_init_command_buf(RenWindow *ren) {
-  ren->command_buf = NULL;
-  ren->command_buf_idx = 0;
-  ren->command_buf_size = 0;
-}
-
-
-static RenRect scaled_rect(const RenRect rect, const int scale) {
-  return (RenRect) {rect.x * scale, rect.y * scale, rect.width * scale, rect.height * scale};
-}
-
-
-void renwin_clip_to_surface(RenWindow *ren) {
-  SDL_SetSurfaceClipRect(renwin_get_surface(ren).surface, NULL);
-}
-
-
-void renwin_set_clip_rect(RenWindow *ren, RenRect rect) {
-  RenSurface rs = renwin_get_surface(ren);
-  RenRect sr = scaled_rect(rect, rs.scale);
-  SDL_SetSurfaceClipRect(rs.surface, &(SDL_Rect){.x = sr.x, .y = sr.y, .w = sr.width, .h = sr.height});
-}
-
-
-RenSurface renwin_get_surface(RenWindow *ren) {
+static void soft_free_window(RenWindow *ren) {
 #ifdef LITE_USE_SDL_RENDERER
-  return ren->rensurface;
+  SDL_DestroyTexture(ren->texture);
+  SDL_DestroyRenderer(ren->renderer);
+  SDL_DestroySurface(ren->rensurface.surface);
 #else
-  SDL_Surface *surface = SDL_GetWindowSurface(ren->window);
-  if (!surface) {
-    fprintf(stderr, "Error getting window surface: %s", SDL_GetError());
-    exit(1);
-  }
-  return (RenSurface){.surface = surface, .scale = 1};
+  (void) ren;
 #endif
 }
 
-void renwin_resize_surface(RenWindow *ren) {
+static void soft_resize(RenWindow *ren) {
 #ifdef LITE_USE_SDL_RENDERER
   int new_w, new_h, new_scale;
   SDL_GetWindowSizeInPixels(ren->window, &new_w, &new_h);
@@ -94,15 +113,10 @@ void renwin_resize_surface(RenWindow *ren) {
   if (new_scale != ren->rensurface.scale ||
       new_w != ren->rensurface.surface->w ||
       new_h != ren->rensurface.surface->h) {
-    renwin_init_surface(ren);
-    renwin_clip_to_surface(ren);
+    soft_init_window(ren);
     setup_renderer(ren, new_w, new_h);
   }
-#endif
-}
-
-void renwin_update_scale(RenWindow *ren) {
-#ifndef LITE_USE_SDL_RENDERER
+#else
   SDL_Surface *surface = SDL_GetWindowSurface(ren->window);
   int window_w = surface->w, window_h = surface->h;
   SDL_GetWindowSize(ren->window, &window_w, &window_h);
@@ -111,11 +125,17 @@ void renwin_update_scale(RenWindow *ren) {
 #endif
 }
 
-void renwin_show_window(RenWindow *ren) {
-  SDL_ShowWindow(ren->window);
+static void soft_get_size(RenWindow *ren, int *w, int *h) {
+  RenSurface rs = soft_get_surface(ren);
+  *w = rs.surface->w;
+  *h = rs.surface->h;
+#ifdef LITE_USE_SDL_RENDERER
+  *w /= rs.scale;
+  *h /= rs.scale;
+#endif
 }
 
-void renwin_update_rects(RenWindow *ren, RenRect *rects, int count) {
+static void soft_present(RenWindow *ren, RenRect *rects, int count) {
 #ifdef LITE_USE_SDL_RENDERER
   const int scale = ren->rensurface.scale;
   for (int i = 0; i < count; i++) {
@@ -133,12 +153,23 @@ void renwin_update_rects(RenWindow *ren, RenRect *rects, int count) {
 #endif
 }
 
-void renwin_free(RenWindow *ren) {
-#ifdef LITE_USE_SDL_RENDERER
-  SDL_DestroyTexture(ren->texture);
-  SDL_DestroyRenderer(ren->renderer);
-  SDL_DestroySurface(ren->rensurface.surface);
-#endif
-  SDL_DestroyWindow(ren->window);
-  ren->window = NULL;
+static void soft_set_clip(RenWindow *ren, RenRect rect) {
+  RenSurface rs = soft_get_surface(ren);
+  RenRect sr = scaled_rect(rect, rs.scale);
+  SDL_SetSurfaceClipRect(rs.surface, &(SDL_Rect){.x = sr.x, .y = sr.y, .w = sr.width, .h = sr.height});
 }
+
+const RenBackend renbackend_soft = {
+  .name = "soft",
+  .available = soft_available,
+  .window_flags = soft_window_flags,
+  .init_window = soft_init_window,
+  .free_window = soft_free_window,
+  .resize = soft_resize,
+  .get_size = soft_get_size,
+  .present = soft_present,
+  .set_clip = soft_set_clip,
+  .get_surface = soft_get_surface,
+  .draw_rect = soft_draw_rect,
+  .draw_glyph = soft_draw_glyph,
+};

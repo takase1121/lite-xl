@@ -264,6 +264,28 @@ static void push_rect(RenRect r, int *count) {
 }
 
 
+static void replay_commands(RenWindow *window_renderer, RenSurface *rs, RenRect bound) {
+  Command *cmd = NULL;
+  while (next_command(window_renderer, &cmd)) {
+    SetClipCommand *ccmd = (SetClipCommand*)&cmd->command;
+    DrawRectCommand *rcmd = (DrawRectCommand*)&cmd->command;
+    DrawTextCommand *tcmd = (DrawTextCommand*)&cmd->command;
+    switch (cmd->type) {
+      case SET_CLIP:
+        ren_set_clip_rect(window_renderer, intersect_rects(ccmd->rect, bound));
+        break;
+      case DRAW_RECT:
+        ren_draw_rect(rs, rcmd->rect, rcmd->color);
+        break;
+      case DRAW_TEXT:
+        ren_font_group_set_tab_size(tcmd->fonts, tcmd->tab_size);
+        ren_draw_text(rs, tcmd->fonts, tcmd->text, tcmd->len, tcmd->text_x, tcmd->rect.y, tcmd->color, tcmd->tab);
+        break;
+    }
+  }
+}
+
+
 void rencache_end_frame(RenWindow *window_renderer) {
   /* update cells from commands */
   Command *cmd = NULL;
@@ -310,24 +332,7 @@ void rencache_end_frame(RenWindow *window_renderer) {
     RenRect r = rect_buf[i];
     ren_set_clip_rect(window_renderer, r);
 
-    cmd = NULL;
-    while (next_command(window_renderer, &cmd)) {
-      SetClipCommand *ccmd = (SetClipCommand*)&cmd->command;
-      DrawRectCommand *rcmd = (DrawRectCommand*)&cmd->command;
-      DrawTextCommand *tcmd = (DrawTextCommand*)&cmd->command;
-      switch (cmd->type) {
-        case SET_CLIP:
-          ren_set_clip_rect(window_renderer, intersect_rects(ccmd->rect, r));
-          break;
-        case DRAW_RECT:
-          ren_draw_rect(&rs, rcmd->rect, rcmd->color);
-          break;
-        case DRAW_TEXT:
-          ren_font_group_set_tab_size(tcmd->fonts, tcmd->tab_size);
-          ren_draw_text(&rs, tcmd->fonts, tcmd->text, tcmd->len, tcmd->text_x, tcmd->rect.y, tcmd->color, tcmd->tab);
-          break;
-      }
-    }
+    replay_commands(window_renderer, &rs, r);
 
     if (show_debug) {
       RenColor color = { rand(), rand(), rand(), 50 };
