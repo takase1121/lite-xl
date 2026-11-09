@@ -156,8 +156,10 @@ static void soft_draw_glyph(RenSurface *rs, const FontGlyph *g, int x, int y, Re
     return;
 
   uint8_t *destination_pixels = surface->pixels;
-  SDL_Surface *atlas = g->atlas->surface;
-  uint8_t *source_pixels = atlas->pixels;
+  const RenAtlas *atlas = g->atlas;
+  const int atlas_bpp = SDL_BYTESPERPIXEL(atlas->format);
+  const int atlas_pitch = atlas->w * atlas_bpp;
+  uint8_t *source_pixels = atlas->surface;
   int glyph_end = g->w, glyph_start = 0;
   for (int line = 0; line < g->h; ++line) {
     int target_y = line + y;
@@ -174,10 +176,9 @@ static void soft_draw_glyph(RenSurface *rs, const FontGlyph *g, int x, int y, Re
     }
 
     const SDL_PixelFormatDetails* surface_format = SDL_GetPixelFormatDetails(surface->format);
-    const SDL_PixelFormatDetails* font_surface_format = SDL_GetPixelFormatDetails(atlas->format);
 
     uint32_t* destination_pixel = (uint32_t*)&(destination_pixels[surface->pitch * target_y + start_x * surface_format->bytes_per_pixel]);
-    uint8_t* source_pixel = &source_pixels[(g->sy + line) * atlas->pitch + glyph_start * font_surface_format->bytes_per_pixel];
+    uint8_t* source_pixel = &source_pixels[(g->sy + line) * atlas_pitch + glyph_start * atlas_bpp];
     for (int x = glyph_start; x < glyph_end; ++x) {
       uint32_t destination_color = *destination_pixel;
       // the standard way of doing this would be SDL_GetRGBA, but that introduces a performance regression. needs to be investigated
@@ -238,18 +239,18 @@ static void soft_draw_rect(RenSurface *rs, RenRect rect, RenColor color) {
 }
 
 static bool soft_atlas_create(RenAtlas *atlas) {
-  atlas->surface = SDL_CreateSurface(atlas->w, atlas->h, atlas->format);
+  atlas->surface = SDL_calloc((size_t) atlas->h, (size_t) atlas->w * SDL_BYTESPERPIXEL(atlas->format));
   return atlas->surface != NULL;
 }
 
 static void soft_atlas_destroy(RenAtlas *atlas) {
-  SDL_DestroySurface(atlas->surface);
+  SDL_free(atlas->surface);
 }
 
 static void soft_atlas_upload(RenAtlas *atlas, int y, int rows, const uint8_t *src, int pitch, int row_bytes) {
-  SDL_Surface *surface = atlas->surface;
+  const size_t atlas_pitch = (size_t) atlas->w * SDL_BYTESPERPIXEL(atlas->format);
   for (int line = 0; line < rows; line++) {
-    SDL_memcpy((uint8_t*) surface->pixels + (size_t) surface->pitch * (y + line), src + (size_t) pitch * line, row_bytes);
+    SDL_memcpy((uint8_t*) atlas->surface + atlas_pitch * (y + line), src + (size_t) pitch * line, row_bytes);
   }
 }
 

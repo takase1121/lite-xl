@@ -594,7 +594,12 @@ void ren_font_dump(RenFont *font) {
       GlyphAtlas *atlas = &font->glyphs.atlas[glyph_format_idx][atlas_idx];
       for (int surface_idx = 0; surface_idx < atlas->nsurface; surface_idx++) {
         snprintf(filename, 1024, "%s-%d-%d-%d.bmp", font->face->family_name, glyph_format_idx, atlas_idx, surface_idx);
-        if (atlas->surfaces[surface_idx]->backend == &renbackend_soft) SDL_SaveBMP(atlas->surfaces[surface_idx]->surface, filename);
+        RenAtlas *dump = atlas->surfaces[surface_idx];
+        if (dump->backend == &renbackend_soft) {
+          SDL_Surface *view = SDL_CreateSurfaceFrom(dump->w, dump->h, dump->format, dump->surface, dump->w * SDL_BYTESPERPIXEL(dump->format));
+          SDL_SaveBMP(view, filename);
+          SDL_DestroySurface(view);
+        }
       }
     }
   }
