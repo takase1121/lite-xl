@@ -9,13 +9,13 @@
 
 typedef struct {
   RenFont *font;
-  RenAtlas *atlas;      // NULL when the glyph has no bitmap
-  int sy, w, h;        // bitmap region in the atlas
-  int left, top;       // bitmap offset from the pen position and baseline
-  bool lcd;            // atlas holds per-channel coverage
+  RenAtlas *atlas; // NULL when the glyph has no bitmap
+  int sy, w, h;
+  int left, top;
+  bool lcd;
   float xadvance;
   float space_advance;
-  int font_height, underline_thickness; // of the font the glyph came from
+  int font_height, underline_thickness;
 } FontGlyph;
 
 int font_init(void);
@@ -26,7 +26,6 @@ unsigned char font_group_get_style(RenFont **fonts);
 bool font_group_lookup(RenFont **fonts, unsigned int codepoint, int subpixel_idx, FontGlyph *out);
 float font_get_xadvance(RenFont *font, unsigned int codepoint, float xadvance, double curr_x, RenTab tab);
 
-// implemented by the renderer, forwarding to the backends
 RenAtlas *ren_atlas_create(int w, int h, SDL_PixelFormat format);
 void ren_atlas_upload(RenAtlas *atlas, int y, int rows, const uint8_t *src, int pitch, int row_bytes);
 void ren_atlas_destroy(RenAtlas *atlas);

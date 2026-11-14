@@ -6,7 +6,6 @@
 
 typedef enum { BACKEND_FLAG_FULL_REDRAW = 1 } ERenBackendFlag;
 
-/* properties handed to available() by ren_set_backend */
 /* string: GL profiles to try, in order. "gles", "gl" or "gles,gl" */
 #define RENBACKEND_PROP_GL_BACKEND "gl_backend"
 

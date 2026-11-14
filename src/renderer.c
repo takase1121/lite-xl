@@ -131,7 +131,6 @@ int video_init(void) {
   return 0;
 }
 
-// selects the backend used by windows created from now on
 bool ren_set_backend(const char *name, SDL_PropertiesID props) {
   for (size_t i = 0; i < sizeof(backends) / sizeof(*backends); i++) {
     if (strcmp(backends[i]->name, name) == 0 && backends[i]->available(props)) {

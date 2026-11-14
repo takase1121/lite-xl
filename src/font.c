@@ -339,7 +339,6 @@ static RenAtlas *font_load_glyph_bitmap(RenFont *font, unsigned int glyph_id, un
   int pitch = slot->bitmap.pitch;
   uint8_t *expanded = NULL;
   if (font->antialiasing == FONT_ANTIALIASING_NONE) {
-    // expand the 1 bit per pixel bitmap to one byte per pixel
     expanded = check_alloc(SDL_malloc((size_t) slot->bitmap.width * slot->bitmap.rows));
     for (unsigned int line = 0; line < slot->bitmap.rows; ++line) {
       for (unsigned int column = 0; column < slot->bitmap.width; ++column) {

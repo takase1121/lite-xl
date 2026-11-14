@@ -110,7 +110,6 @@ static bool load_gl_functions(void) {
 #define glUseProgram p_glUseProgram
 #define glVertexAttribPointer p_glVertexAttribPointer
 
-/* chosen by available(): GLES2 or desktop OpenGL 2.1 */
 static bool use_es;
 
 enum { LOC_POS, LOC_UV, LOC_COL };
