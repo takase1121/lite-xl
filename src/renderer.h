@@ -25,7 +25,7 @@ typedef struct { SDL_Surface *surface; int scale; const struct RenBackend *backe
 
 typedef struct RenAtlas {
   const struct RenBackend *backend;
-  void *surface;                    /* soft: pixel buffer, w * bytes-per-pixel per row; gl: texture id as (void *)(uintptr_t), NULL until first upload */
+  void *surface;                    /* soft: pixel buffer, w * bytes-per-pixel per row; gl: GLAtlas with the texture and its pending rows */
   int w, h;
   SDL_PixelFormat format;
   void *userdata;                   /* owned by the font cache */

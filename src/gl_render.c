@@ -117,14 +117,12 @@ enum { LOC_POS, LOC_UV, LOC_COL };
 typedef struct { float x, y, u, v; uint8_t r, g, b, a; } GLVert;
 
 typedef struct {
-  SDL_Window *window;
   SDL_GLContext ctx;
   GLuint prog, vbo, white_tex;
   GLint u_size, u_sel;
   GLVert *verts;
   size_t count, cap;
-  GLuint tex;
-  bool lcd;
+  RenAtlas *atlas;
   RenRect clip;
   int w, h;
 } GLRenderer;
@@ -198,9 +196,9 @@ static GLuint link_program(void) {
   return p;
 }
 
-static GLenum texture_format(int bpp) {
-  return bpp == 4 ? GL_RGBA : bpp == 3 ? GL_RGB : GL_LUMINANCE;
-}
+#define PENDING_BYTES (32 * 1024)
+#define ATLAS_TEXTURE_FORMAT(bpp) ((bpp) == 4 ? GL_RGBA : (bpp) == 3 ? GL_RGB : GL_LUMINANCE)
+#define ATLAS_STRIDE(atlas) ((size_t) (atlas)->w * SDL_BYTESPERPIXEL((atlas)->format))
 
 /* GLES2 leaves texture contents undefined without initial data, so a NULL pixels means zeroed */
 static unsigned texture_create(int w, int h, int bpp, const void *pixels) {
@@ -211,7 +209,7 @@ static unsigned texture_create(int w, int h, int bpp, const void *pixels) {
     if (!zeros) return 0;
     pixels = zeros;
   }
-  GLenum fmt = texture_format(bpp);
+  GLenum fmt = ATLAS_TEXTURE_FORMAT(bpp);
   glGenTextures(1, &tex);
   glBindTexture(GL_TEXTURE_2D, tex);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -224,109 +222,58 @@ static unsigned texture_create(int w, int h, int bpp, const void *pixels) {
   return tex;
 }
 
-static unsigned atlas_texture(const RenAtlas *atlas) {
-  return (unsigned) (uintptr_t) atlas->surface;
-}
-
-/* Uploads are staged and sent right before the next draw. Glyph rows are kept
-** tightly packed in an arena. On commit they are sorted by (texture, row) and
-** adjacent row ranges are gathered into a scratch buffer, padded to the
-** surface width, so each run goes up as one full-width upload. Padding is
-** safe because every glyph owns its band of rows in the atlas. */
-#define STAGE_BYTES (4 << 20)
-#define STAGE_ENTRIES 4096
-#define SCRATCH_BYTES (1 << 20)
 
 typedef struct {
-  unsigned tex;
-  int y, rows, row_bytes, full_bytes, bpp;
-  size_t offset;
-} StagedUpload;
+  GLuint tex;
+  uint8_t *buf;
+  int pending_y, pending_h;
+} GLAtlas;
 
-static StagedUpload staged[STAGE_ENTRIES];
-static size_t staged_count, stage_used;
-static uint8_t *stage_buf, *scratch_buf;
-
-static int staged_cmp(const void *a, const void *b) {
-  const StagedUpload *x = a, *y = b;
-  if (x->tex != y->tex) return x->tex < y->tex ? -1 : 1;
-  return x->y - y->y;
+static int pending_cap(const RenAtlas *atlas) {
+  return SDL_min(atlas->h, SDL_max(1, (int) (PENDING_BYTES / ATLAS_STRIDE(atlas))));
 }
 
-static void upload_rows(unsigned tex, int y, int rows, int width_px, int bpp, const void *data) {
-  glBindTexture(GL_TEXTURE_2D, tex);
-  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y, width_px, rows, texture_format(bpp), GL_UNSIGNED_BYTE, data);
-}
-
-static void commit_uploads(void) {
-  if (!staged_count) return;
+static void upload_pending(RenAtlas *atlas) {
+  GLAtlas *a = atlas->surface;
+  if (!a->pending_h) return;
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  SDL_qsort(staged, staged_count, sizeof *staged, staged_cmp);
-  for (size_t i = 0; i < staged_count;) {
-    const StagedUpload *first = &staged[i];
-    if (!first->tex) { i++; continue; }
-    int rows = 0;
-    size_t j = i;
-    while (j < staged_count && staged[j].tex == first->tex && staged[j].y == first->y + rows
-           && (size_t) (rows + staged[j].rows) * first->full_bytes <= SCRATCH_BYTES) {
-      const StagedUpload *s = &staged[j];
-      for (int line = 0; line < s->rows; line++) {
-        uint8_t *dst = scratch_buf + (size_t) (rows + line) * s->full_bytes;
-        SDL_memcpy(dst, stage_buf + s->offset + (size_t) line * s->row_bytes, s->row_bytes);
-        SDL_memset(dst + s->row_bytes, 0, s->full_bytes - s->row_bytes);
-      }
-      rows += s->rows;
-      j++;
-    }
-    if (j == i) {
-      upload_rows(first->tex, first->y, first->rows, first->row_bytes / first->bpp, first->bpp, stage_buf + first->offset);
-      i++;
-    } else {
-      upload_rows(first->tex, first->y, rows, first->full_bytes / first->bpp, first->bpp, scratch_buf);
-      i = j;
-    }
-  }
-  staged_count = 0;
-  stage_used = 0;
+  glBindTexture(GL_TEXTURE_2D, a->tex);
+  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, a->pending_y, atlas->w, a->pending_h,
+                  ATLAS_TEXTURE_FORMAT(SDL_BYTESPERPIXEL(atlas->format)), GL_UNSIGNED_BYTE, a->buf);
+  SDL_memset(a->buf, 0, a->pending_h * ATLAS_STRIDE(atlas));
+  a->pending_h = 0;
 }
 
-/* the atlas pixels live only in the texture: new glyph rows go straight from the FreeType buffer */
+static void atlas_destroy(RenAtlas *atlas) {
+  GLAtlas *a = atlas->surface;
+  if (a->tex && SDL_GL_GetCurrentContext()) {
+    glDeleteTextures(1, &a->tex);
+  }
+  SDL_free(a->buf);
+  SDL_free(a);
+}
+
 static bool atlas_create(RenAtlas *atlas) {
+  GLAtlas *a = SDL_calloc(1, sizeof *a);
+  if (!a) return false;
+  atlas->surface = a;
+  a->buf = SDL_calloc(pending_cap(atlas), ATLAS_STRIDE(atlas));
+  a->tex = texture_create(atlas->w, atlas->h, SDL_BYTESPERPIXEL(atlas->format), NULL);
+  if (!a->buf || !a->tex) {
+    atlas_destroy(atlas);
+    return false;
+  }
   return true;
 }
 
 static void atlas_upload(RenAtlas *atlas, int y, int rows, const uint8_t *src, int pitch, int row_bytes) {
-  const int bpp = SDL_BYTESPERPIXEL(atlas->format);
-  unsigned tex = atlas_texture(atlas);
-  if (!tex) {
-    tex = texture_create(atlas->w, atlas->h, bpp, NULL);
-    atlas->surface = (void *) (uintptr_t) tex;
-  }
-  const size_t bytes = (size_t) row_bytes * rows;
-  if (bytes > STAGE_BYTES) return;
-  if (!stage_buf) {
-    stage_buf = SDL_malloc(STAGE_BYTES);
-    scratch_buf = SDL_malloc(SCRATCH_BYTES);
-  }
-  if (!stage_buf || !scratch_buf) return;
-  if (staged_count == STAGE_ENTRIES || stage_used + bytes > STAGE_BYTES) commit_uploads();
+  GLAtlas *a = atlas->surface;
   for (int line = 0; line < rows; line++) {
-    SDL_memcpy(stage_buf + stage_used + (size_t) line * row_bytes, src + (size_t) line * pitch, row_bytes);
-  }
-  staged[staged_count++] = (StagedUpload){
-    .tex = tex, .y = y, .rows = rows, .row_bytes = row_bytes,
-    .full_bytes = atlas->w * bpp, .bpp = bpp, .offset = stage_used,
-  };
-  stage_used += bytes;
-}
-
-static void atlas_destroy(RenAtlas *atlas) {
-  unsigned tex = atlas_texture(atlas);
-  for (size_t i = 0; i < staged_count; i++) {
-    if (staged[i].tex == tex) staged[i].tex = 0;
-  }
-  if (tex && SDL_GL_GetCurrentContext()) {
-    glDeleteTextures(1, &tex);
+    if (a->pending_h == pending_cap(atlas)) upload_pending(atlas);
+    /* glyph rows arrive in ascending y, so the pending rows are contiguous */
+    if (!a->pending_h) a->pending_y = y + line;
+    SDL_memcpy(a->buf + a->pending_h * ATLAS_STRIDE(atlas), src + (size_t) line * pitch, row_bytes);
+    a->pending_h++;
   }
 }
 
@@ -335,7 +282,6 @@ static int max_atlas_size(void) {
 }
 
 static void flush(GLRenderer *gl) {
-  commit_uploads();
   if (!gl->count) return;
   glBindBuffer(GL_ARRAY_BUFFER, gl->vbo);
   glBufferData(GL_ARRAY_BUFFER, gl->count * sizeof(GLVert), gl->verts, GL_STREAM_DRAW);
@@ -346,12 +292,18 @@ static void flush(GLRenderer *gl) {
   glVertexAttribPointer(LOC_UV, 2, GL_FLOAT, GL_FALSE, sizeof(GLVert), (void*) offsetof(GLVert, u));
   glVertexAttribPointer(LOC_COL, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(GLVert), (void*) offsetof(GLVert, r));
   glScissor(gl->clip.x, gl->h - (gl->clip.y + gl->clip.height), gl->clip.width, gl->clip.height);
-  glBindTexture(GL_TEXTURE_2D, gl->tex);
+  GLuint tex = gl->white_tex;
+  if (gl->atlas) {
+    upload_pending(gl->atlas);
+    GLAtlas *a = gl->atlas->surface;
+    tex = a->tex;
+  }
+  glBindTexture(GL_TEXTURE_2D, tex);
 
   /* Same per-channel blend as the software path: each pass writes one channel
   ** using that channel's coverage as alpha. */
   static const float sel[3][3] = { { 1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 } };
-  if (gl->lcd) {
+  if (gl->atlas && gl->atlas->format == SDL_PIXELFORMAT_RGB24) {
     for (int ch = 0; ch < 3; ch++) {
       glColorMask(ch == 0, ch == 1, ch == 2, GL_FALSE);
       glUniform3fv(gl->u_sel, 1, sel[ch]);
@@ -365,12 +317,11 @@ static void flush(GLRenderer *gl) {
   gl->count = 0;
 }
 
-static void push_quad(GLRenderer *gl, GLuint tex, bool lcd, float x0, float y0, float x1, float y1,
+static void push_quad(GLRenderer *gl, RenAtlas *atlas, float x0, float y0, float x1, float y1,
                       float u0, float v0, float u1, float v1, RenColor c) {
-  if (tex != gl->tex || lcd != gl->lcd) {
+  if (atlas != gl->atlas) {
     flush(gl);
-    gl->tex = tex;
-    gl->lcd = lcd;
+    gl->atlas = atlas;
   }
   if (gl->count + 6 > gl->cap) {
     gl->cap = gl->cap ? gl->cap * 2 : 6 * 1024;
@@ -385,11 +336,8 @@ static void push_quad(GLRenderer *gl, GLuint tex, bool lcd, float x0, float y0, 
   gl->count += 6;
 }
 
-static GLRenderer *create(SDL_Window *window, GLRenderer *share) {
-  if (share) {
-    SDL_GL_MakeCurrent(share->window, share->ctx);
-    SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
-  }
+static GLRenderer *create(SDL_Window *window, bool share) {
+  if (share) SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
   SDL_GLContext ctx = SDL_GL_CreateContext(window);
   SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0);
   if (!ctx) return NULL;
@@ -401,7 +349,6 @@ static GLRenderer *create(SDL_Window *window, GLRenderer *share) {
   SDL_GL_SetSwapInterval(SDL_getenv("LITE_GL_NOVSYNC") ? 0 : 1);
 
   GLRenderer *gl = SDL_calloc(1, sizeof(GLRenderer));
-  gl->window = window;
   gl->ctx = ctx;
   gl->prog = link_program();
   if (!gl->prog) {
@@ -514,20 +461,21 @@ static void update_scale(RenWindow *ren) {
 }
 
 static bool init_window(RenWindow *ren) {
-  GLRenderer *share = NULL;
+  RenWindow *share = NULL;
   RenWindow **list;
   size_t count = ren_get_window_list(&list);
   for (size_t i = 0; i < count && !share; i++) {
-    if (list[i]->backend == &renbackend_gl) share = gl_of(list[i]);
+    if (list[i]->backend == &renbackend_gl) share = list[i];
   }
-  ren->backend_data = create(ren->window, share);
+  if (share) SDL_GL_MakeCurrent(share->window, gl_of(share)->ctx);
+  ren->backend_data = create(ren->window, share != NULL);
   update_scale(ren);
   return ren->backend_data != NULL;
 }
 
 static void free_window(RenWindow *ren) {
   GLRenderer *gl = gl_of(ren);
-  SDL_GL_MakeCurrent(gl->window, gl->ctx);
+  SDL_GL_MakeCurrent(ren->window, gl->ctx);
   glDeleteTextures(1, &gl->white_tex);
   glDeleteBuffers(1, &gl->vbo);
   glDeleteProgram(gl->prog);
@@ -547,15 +495,14 @@ static void get_size(RenWindow *ren, int *w, int *h) {
 
 static void begin_frame(RenWindow *ren) {
   GLRenderer *gl = gl_of(ren);
-  SDL_GL_MakeCurrent(gl->window, gl->ctx);
-  SDL_GetWindowSizeInPixels(gl->window, &gl->w, &gl->h);
+  SDL_GL_MakeCurrent(ren->window, gl->ctx);
+  SDL_GetWindowSizeInPixels(ren->window, &gl->w, &gl->h);
   glViewport(0, 0, gl->w, gl->h);
   glUseProgram(gl->prog);
   glUniform2f(gl->u_size, (float) gl->w, (float) gl->h);
   glActiveTexture(GL_TEXTURE0);
   gl->count = 0;
-  gl->tex = gl->white_tex;
-  gl->lcd = false;
+  gl->atlas = NULL;
   gl->clip = (RenRect) { 0, 0, gl->w, gl->h };
   glScissor(0, 0, gl->w, gl->h);
   glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
@@ -568,7 +515,7 @@ static void end_frame(RenWindow *ren, UNUSED RenRect *rects, UNUSED int count) {
   flush(gl);
   /* with vsync off, wait for the GPU so frame timings include its work */
   if (SDL_getenv("LITE_GL_NOVSYNC")) glFinish();
-  SDL_GL_SwapWindow(gl->window);
+  SDL_GL_SwapWindow(ren->window);
 }
 
 static void set_clip(RenWindow *ren, RenRect rect) {
@@ -583,12 +530,12 @@ static RenSurface get_surface(RenWindow *ren) {
 
 static void draw_rect(RenSurface *rs, RenRect r, RenColor color) {
   GLRenderer *gl = rs->data;
-  push_quad(gl, gl->white_tex, false, r.x, r.y, r.x + r.width, r.y + r.height, 0, 0, 0, 0, color);
+  push_quad(gl, NULL, r.x, r.y, r.x + r.width, r.y + r.height, 0, 0, 0, 0, color);
 }
 
 static void draw_glyph(RenSurface *rs, const FontGlyph *g, int x, int y, RenColor color) {
   const float tw = g->atlas->w, th = g->atlas->h;
-  push_quad(rs->data, atlas_texture(g->atlas), g->lcd, x, y, x + g->w, y + g->h,
+  push_quad(rs->data, g->atlas, x, y, x + g->w, y + g->h,
             0, g->sy / th, g->w / tw, (g->sy + g->h) / th, color);
 }
 
